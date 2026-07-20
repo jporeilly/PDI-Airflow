@@ -1,53 +1,82 @@
 # Capstone - Copper State Credit Union on Airflow
 
 The capstone ties the whole toolkit together on a realistic **Copper
-State Credit Union (CSCU)** banking pipeline: migrate PDI jobs in the
-Studio, run them on Carte (single **and** clustered) under the Airflow
-scheduler, and see the lineage in **Marquez** and **Pentaho Data
-Catalog**.
+State Credit Union (CSCU)** banking pipeline, following the real
+migration workflow: **build the pipeline in PDI (Spoon) -> migrate it in
+the Studio -> run it on Carte (single and clustered) under the Airflow
+scheduler -> trace the lineage in Marquez and Pentaho Data Catalog.**
 
 It reuses the **same `cscu_core` database** as the PDC-Scenarios /
 Glossary lab (`192.168.1.200:5433`), so the PDI table lineage lands in
-the **same PDC** the catalog work already uses - one member's data,
-traced from source tables through the mart.
+the **same PDC** the catalog work already uses.
 
-## The pipeline
+## Two kinds of `.ktr` here
 
-`samples/cscu/` (also staged in the Carte repository at
-`/CSCU/`):
+- **Shipped blueprints** — `samples/cscu/*.ktr` (also staged at
+  `/CSCU/` in the Carte repository). These are **minimal
+  migration-input examples**: just the connection, SQL and target, enough
+  for `pdi2dag` to convert them and emit **structural lineage**. They do
+  **not** render in Spoon and are **not executable** on Carte - they show
+  the *shape* of the pipeline, not a runnable one.
 
-| PDI file | Does |
-|---|---|
-| `extract_transactions.ktr` | posted `cscu_core.transactions` -> `mart staging.txn_stg` |
-| `build_member_mart.ktr` | **member 360**: members x branches x accounts x transactions -> `mart.member_360` |
-| `import_ach_csv.ktr` | ACH payments CSV (local file) -> `staging.ach_stg` |
-| `import_ach_minio.ktr` | ACH payments from **MinIO** `s3://cscu-documents` -> `staging.ach_stg` |
-| `cscu_daily_load.kjb` | `extract_transactions` -> `build_member_mart` (mail-on-failure) |
+  | Blueprint | Shape |
+  |---|---|
+  | `extract_transactions.ktr` | `cscu_core.transactions` -> `staging.txn_stg` |
+  | `build_member_mart.ktr` | members x branches x accounts x transactions -> `mart.member_360` |
+  | `import_ach_csv.ktr` | ACH CSV (local) -> `staging.ach_stg` |
+  | `import_ach_minio.ktr` | ACH from MinIO `s3://cscu-documents` -> `staging.ach_stg` |
+  | `cscu_daily_load.kjb` | `extract_transactions` -> `build_member_mart` |
 
-Generated DAGs live in [`workshop/dags/CSCU/`](../dags/CSCU/) — under the
-mounted DAGs folder, so they load on the VM's Airflow after a `git pull`.
+- **What you run live** — a transformation **you build in Spoon** (below).
+  Spoon writes a complete, executable `.ktr`; that's what actually runs on
+  Carte and what a real migration starts from.
+
+Generated reference DAGs live in [`workshop/dags/CSCU/`](../dags/CSCU/).
 
 ## Prerequisites
 
 1. **Lab up**: Airflow (`:8088`) + Marquez (`:3000`/`:6001`) on the VM,
-   PDC at `https://pentaho.io`. The scheduler must be on the fixed compose
-   (`execution_api_server_url`, v1.15.5+) - verified when a plain
-   `m01_carte_trans_basic` run goes green.
-2. **CSCU data** (only for live execution, Modules 2-4): load `cscu_core`
-   into the shared lab with the PDC-Scenarios kit -
-   `cd PDC-Scenarios/data_sources/lab && make load SCENARIO=CSCU`.
-3. **Carte** running on Windows (`.\run-carte.ps1`), with a **`cscu-core`
-   database connection** to `192.168.1.200:5433 / cscu_core / pdc_user`
-   (read-only) and a writable **`cscu-mart`** target. Define these in
-   Spoon (Tools -> Repository connected -> Database connections) so Carte
-   resolves the connection names the `.ktr` files reference. Module 1
-   (migration + structural lineage) needs neither the DB nor Carte.
+   PDC at `https://pentaho.io`, scheduler on the fixed compose
+   (`execution_api_server_url`, v1.15.5+).
+2. **CSCU data** (for live execution): `cd PDC-Scenarios/data_sources/lab
+   && make load SCENARIO=CSCU` loads the read-only `cscu_core`.
+3. **Carte** from the install (`cd C:\PDI-Airflow ; .\run-carte.ps1`),
+   with a **`cscu-core`** database connection to
+   `192.168.1.200:5433 / cscu_core / pdc_user / catalog123!` defined as a
+   **shared** connection in Spoon (so every transformation resolves it).
+
+The *migration + structural-lineage* part (Module 1) needs none of the DB
+or Carte - it works off the shipped blueprints.
+
+---
+
+## Module 0 - Build the pipeline in PDI (Spoon)
+
+The authentic starting point: author the transformation in Spoon, which
+produces a real, executable, migratable `.ktr`.
+
+1. Connect Spoon to the **`Default`** repository (`C:\PDI-Airflow\pipelines`).
+2. New transformation. Drag a **Table Input** (connection `cscu-core`):
+   ```sql
+   SELECT txn_id, acct_id, txn_dt, txn_amt, merch_nm, mcc_cd
+   FROM cscu_core.transactions
+   WHERE post_dt >= '2026-07-01'
+   ```
+3. Drag a **Write to Log** (log the fields) - a read-only demo needs no
+   writable mart. *(For the full member-360 mart, add a `Table Output` to
+   a writable `cscu-mart` target instead.)*
+4. Hop Table Input -> Write to Log; **Save as** `/CSCU/txn_report`.
+
+You now have `/CSCU/txn_report` - a genuine transformation that reads real
+credit-union data and runs on Carte.
 
 ---
 
 ## Module 1 - Migrate in the Studio (10 min)
 
-No database or Carte needed - this is the migration itself.
+No database or Carte needed - this is the migration itself, run on the
+shipped **blueprint** (`cscu_daily_load.kjb` + its two transformations) to
+show conversion and structural lineage.
 
 1. Studio -> **Load** -> drop `samples/cscu/cscu_daily_load.kjb`. The
    Studio auto-pulls the two transformations it calls.
@@ -66,17 +95,27 @@ and `members/accounts/transactions -> mart.member_360` table lineage,
 built from the `.ktr` SQL. Open PDC and follow a member's data from the
 core tables into the mart.
 
-## Module 2 - Run on a single Carte (15 min)
+## Module 2 - Migrate and run it on a single Carte (15 min)
 
-*(needs `cscu_core` loaded + Carte with the DB connections)*
+Now the real thing: migrate the **`txn_report`** you built in Module 0
+and run it live.
 
-1. Start Carte: `.\run-carte.ps1` (serves `/CSCU/*` from the
-   file repository).
-2. Unpause `cscu_daily_load` in Airflow and **Trigger**.
-3. Watch the Graph view: `Extract_Transactions` runs on Carte (reads
-   `cscu_core.transactions`, writes `staging.txn_stg`), then
-   `Build_Member_Mart` builds `mart.member_360`. The Carte step metrics
-   (rows read/written) stream into the Airflow task log.
+*(needs `cscu_core` loaded + Carte running + `/CSCU/txn_report`)*
+
+1. **Migrate** it: Studio -> **Load** ->
+   `C:\PDI-Airflow\pipelines\CSCU\txn_report.ktr` -> **Configure**
+   (`pdi_default`) -> **Deploy**. (Or `pdi2dag migrate
+   ...\txn_report.ktr --dags-folder ...\deploy-target ...`.)
+2. **Carte**: `cd C:\PDI-Airflow ; .\run-carte.ps1` (serves `/CSCU/*`).
+3. **Trigger** the `txn_report` DAG. It runs on Carte, reads
+   `cscu_core.transactions`, and streams the rows into the Airflow task
+   log; the input lineage `cscu_core.cscu_core.transactions` shows in
+   Marquez/PDC.
+
+> **The full mart pipeline** (`cscu_daily_load`: extract -> member-360
+> mart) is the advanced version - build both transformations in Spoon
+> with a `Table Output` to a **writable `cscu-mart`** database (the
+> PDC-Scenarios `cscu_core` is read-only), then migrate the `.kjb`.
 
 ## Module 3 - Run clustered (20 min)
 

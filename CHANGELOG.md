@@ -1,5 +1,17 @@
 # Changelog
 
+## PDI-AirFlow v1.20.3 - 2026-07-20
+
+- **Capstone reframed around the real workflow: build in PDI -> migrate
+  -> run.** Clarified that the shipped `samples/cscu/*.ktr` are minimal
+  **migration-input blueprints** (connection + SQL + target only) - they
+  convert and emit lineage but do **not** render in Spoon or execute on
+  Carte. Added **Module 0 - Build the pipeline in PDI (Spoon)** (author a
+  real Table Input -> Write to Log `txn_report`), reworked Module 2 to
+  migrate and run that executable transformation, and noted the full
+  member-360 mart needs a writable `cscu-mart` DB. New `samples/cscu/README.md`
+  explains the blueprint-vs-runnable distinction.
+
 ## PDI-AirFlow v1.20.2 - 2026-07-20
 
 - **Docs: MinIO VFS connection signer type.** Capstone Module 5 and a
