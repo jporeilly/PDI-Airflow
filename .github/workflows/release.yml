@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: webapp/frontend/package-lock.json
+
+      - name: Build the Studio UI
+        working-directory: webapp/frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Package a deployable zip
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          mkdir -p dist-pkg
+          zip -r "dist-pkg/PDI-AirFlow-${ver}.zip" . \
+            -x '.git/*' '.github/*' 'dist-pkg/*' \
+               '*/node_modules/*' '*/__pycache__/*' '*/.venv/*' \
+               '*/.pytest_cache/*' '_pdc_share/*' '*.pyc'
+
+      - name: Create the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist-pkg/*.zip
+          generate_release_notes: true

@@ -27,3 +27,4 @@ webapp/settings.json
 workshop/dags/deploy-target/*.py
 *.openlineage.json
 _pdc_share/
+webapp/logs/

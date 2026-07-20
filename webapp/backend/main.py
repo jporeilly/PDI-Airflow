@@ -27,10 +27,12 @@ Run:  uvicorn main:app --port 5012   (from webapp/backend)
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
 import threading
 import uuid
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.parse import urlsplit, urlunsplit
@@ -55,6 +57,34 @@ from pdi2dag.parser import parse_file, parse_trans_detail
 ROOT = Path(__file__).resolve().parents[1]          # webapp/
 SETTINGS_FILE = ROOT / 'settings.json'
 DIST = ROOT / 'frontend' / 'dist'
+LOG_DIR = ROOT / 'logs'
+
+
+def _setup_logging():
+    """Rotating file log (webapp/logs/studio.log) + console, so a
+    long-running / service install leaves a diagnosable trail."""
+    logger = logging.getLogger('studio')
+    if logger.handlers:
+        return logger
+    logger.setLevel(logging.INFO)
+    fmt = logging.Formatter(
+        '%(asctime)s %(levelname)-7s %(message)s')
+    try:
+        LOG_DIR.mkdir(exist_ok=True)
+        fh = RotatingFileHandler(
+            LOG_DIR / 'studio.log', maxBytes=1_000_000, backupCount=5,
+            encoding='utf-8')
+        fh.setFormatter(fmt)
+        logger.addHandler(fh)
+    except OSError:  # read-only dir — fall back to console only
+        pass
+    ch = logging.StreamHandler()
+    ch.setFormatter(fmt)
+    logger.addHandler(ch)
+    return logger
+
+
+log = _setup_logging()
 
 DEFAULT_SETTINGS = {
     'airflow_url': 'http://localhost:8088',
@@ -98,8 +128,23 @@ app = FastAPI(
 )
 
 
+log.info('PDI-AirFlow Migration Studio %s starting', __version__)
+
+
+@app.middleware('http')
+async def security_headers(request: Request, call_next):
+    """Conservative headers — the Studio is a local same-origin app."""
+    resp = await call_next(request)
+    resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    resp.headers.setdefault('X-Frame-Options', 'DENY')
+    resp.headers.setdefault('Referrer-Policy', 'no-referrer')
+    return resp
+
+
 @app.exception_handler(Exception)
 async def unhandled(request: Request, exc: Exception):
+    log.exception('Unhandled error on %s %s',
+                  request.method, request.url.path)
     return JSONResponse(status_code=500, content={'error': str(exc)})
 
 

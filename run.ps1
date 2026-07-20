@@ -74,7 +74,8 @@ if ($Dev) {
 }
 Push-Location $backend
 try {
-    & $py -m uvicorn main:app --port $Port
+    # Bind localhost only - the Studio is a local tool, not a shared service.
+    & $py -m uvicorn main:app --host 127.0.0.1 --port $Port
 } finally {
     Pop-Location
 }

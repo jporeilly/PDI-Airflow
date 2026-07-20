@@ -1,5 +1,25 @@
 # Changelog
 
+## PDI-AirFlow v1.17.3 - 2026-07-20
+
+Remaining production-roadmap items + a UI refinement.
+
+- **File logging**: the Studio backend now writes a rotating log to
+  `webapp/logs/studio.log` (1 MB x 5) alongside the console, logs startup
+  and full tracebacks for unhandled errors - a diagnosable trail for the
+  service install.
+- **API hardening**: conservative security headers (`X-Content-Type-Options`,
+  `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`) on every
+  response, and `run.ps1` binds uvicorn to `127.0.0.1` explicitly (the
+  Studio is a local tool, not a shared service). No CORS middleware =
+  same-origin only.
+- **Versioned releases**: `.github/workflows/release.yml` - on a `v*`
+  tag, builds the UI, packages a deployable zip, and creates a GitHub
+  Release with generated notes.
+- **Subtler Status tiles** on Home: the values are smaller, lighter and
+  muted (was a shouty 1.7rem/650), labels now quiet uppercase captions.
+  Studio webapp -> 1.14.3.
+
 ## PDI-AirFlow v1.17.2 - 2026-07-20
 
 - **CSCU samples re-themed to Copper State Credit Union** (financial
