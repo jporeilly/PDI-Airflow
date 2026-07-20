@@ -1,5 +1,16 @@
 # Changelog
 
+## PDI-AirFlow v1.20.1 - 2026-07-20
+
+- **CSCU capstone: MinIO / object-store ingestion.** New
+  `import_ach_minio.ktr` reads the ACH export from the shared MinIO bucket
+  `s3://cscu-documents` (the same bucket PDC/Glossary catalogs) into
+  `staging.ach_stg`, so a PDI pipeline consumes an object-store source and
+  emits **S3 lineage**: `s3://cscu-documents/ach_payments_2026.csv ->
+  cscu_mart.staging.ach_stg` (scheme + bucket kept as the dataset
+  namespace, tying it to the same bucket in PDC). Added Capstone Module 5,
+  the generated DAG, and a regression test. 46 tests pass.
+
 ## PDI-AirFlow v1.20.0 - 2026-07-20
 
 - **Per-vertical scenario structure** mirroring PDC-Scenarios. Each

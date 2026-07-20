@@ -141,6 +141,19 @@ class TestFileDatasets:
         assert ins[0]['name'] == '/data/cscu/ach_payments_2026.csv'
         assert outs[0]['name'] == 'cscu_mart.staging.ach_stg'
 
+    def test_minio_object_store_input(self):
+        # Reading from MinIO/S3 keeps the object-store scheme + bucket as
+        # the dataset namespace (ties PDI lineage to the same bucket PDC
+        # catalogs).
+        from pdi2dag.parser import parse_trans_detail
+        from pdi2dag.lineage import trans_datasets
+        d = parse_trans_detail(os.path.join(
+            SAMPLES, 'cscu', 'import_ach_minio.ktr'))
+        ins, outs = trans_datasets(d)
+        assert ins[0]['namespace'] == 's3://cscu-documents'
+        assert ins[0]['name'] == 'ach_payments_2026.csv'
+        assert outs[0]['name'] == 'cscu_mart.staging.ach_stg'
+
     def test_s3_and_local_file_naming(self):
         from pdi2dag.lineage import _file_dataset
         assert _file_dataset('s3://bucket/path/x.csv') == {

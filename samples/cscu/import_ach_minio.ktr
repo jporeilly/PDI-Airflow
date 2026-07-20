@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<transformation>
+  <info>
+    <name>import_ach_minio</name>
+    <description>Ingest the daily ACH payments export from the shared MinIO object store (s3://cscu-documents) into the Copper State Credit Union mart staging area. Demonstrates object-store ingestion with S3 lineage.</description>
+    <directory>/CSCU</directory>
+    <parameters/>
+  </info>
+  <connection>
+    <name>cscu-mart</name>
+    <server>192.168.1.200</server>
+    <type>POSTGRESQL</type>
+    <access>Native</access>
+    <database>cscu_mart</database>
+    <username>cscu_etl</username>
+    <port>5433</port>
+  </connection>
+  <step>
+    <name>Read ACH from MinIO</name>
+    <type>CsvInput</type>
+    <filename>s3://cscu-documents/ach_payments_2026.csv</filename>
+  </step>
+  <step>
+    <name>Load ACH Payments</name>
+    <type>TableOutput</type>
+    <connection>cscu-mart</connection>
+    <schema>staging</schema>
+    <table>ach_stg</table>
+  </step>
+  <order>
+    <hop><from>Read ACH from MinIO</from><to>Load ACH Payments</to><enabled>Y</enabled></hop>
+  </order>
+</transformation>

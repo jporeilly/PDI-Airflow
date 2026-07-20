@@ -20,7 +20,8 @@ traced from source tables through the mart.
 |---|---|
 | `extract_transactions.ktr` | posted `cscu_core.transactions` -> `mart staging.txn_stg` |
 | `build_member_mart.ktr` | **member 360**: members x branches x accounts x transactions -> `mart.member_360` |
-| `import_ach_csv.ktr` | ACH payments CSV -> `staging.ach_stg` |
+| `import_ach_csv.ktr` | ACH payments CSV (local file) -> `staging.ach_stg` |
+| `import_ach_minio.ktr` | ACH payments from **MinIO** `s3://cscu-documents` -> `staging.ach_stg` |
 | `cscu_daily_load.kjb` | `extract_transactions` -> `build_member_mart` (mail-on-failure) |
 
 Generated DAGs live in [`workshop/dags/CSCU/`](../dags/CSCU/) — under the
@@ -110,6 +111,29 @@ Contrast single-server with a **Carte cluster**.
 owns orchestration/retries/schedule, Marquez owns run history, PDC owns
 the governed table lineage. The capstone shows all four working on one
 credit-union pipeline.
+
+## Module 5 - Object-store ingestion from MinIO (15 min)
+
+The same `cscu-documents` MinIO bucket that PDC/Glossary catalogs for
+*unstructured* documents can also be a PDI **source**. `import_ach_minio.ktr`
+reads the ACH export from `s3://cscu-documents/ach_payments_2026.csv`
+instead of a local file - so the PDI pipeline and the document catalog
+share one bucket.
+
+1. **Connection**: define a MinIO/S3 connection in PDI (or the S3 VFS
+   config) - endpoint `http://192.168.1.200:9000`, access key
+   `cscu_minio_user`, secret `minio_secret_123!`, bucket `cscu-documents`
+   (path-style; the same values the Glossary Generator uses).
+2. **Run** `import_ach_minio` on Carte (single or clustered) via its DAG.
+3. **Lineage**: the input dataset is `s3://cscu-documents/ach_payments_2026.csv`
+   (object-store scheme + bucket kept as the namespace), feeding
+   `cscu_mart.staging.ach_stg`. In Marquez/PDC the PDI job now traces
+   from the **MinIO object** into the mart - the object-store half of the
+   catalog, produced by PDI rather than a document scan.
+
+**Structured vs unstructured:** PDC/Glossary scans `cscu-documents` for
+document structure and PII; this module shows PDI *consuming* an object
+from the same bucket and emitting S3 lineage. Two lenses on one store.
 
 ---
 
