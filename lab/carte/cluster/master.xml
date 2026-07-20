@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Carte CLUSTER master (port 8081).
+
+  Start the whole cluster (this master + the two slaves) with
+  run-carte-cluster.ps1. Slaves register with this master, and a
+  transformation carrying a cluster schema is distributed across them.
+
+  Default HTTP basic auth is cluster/cluster (pwd/kettle.pwd).
+-->
+<slave_config>
+  <slaveserver>
+    <name>cluster-master</name>
+    <hostname>0.0.0.0</hostname>
+    <port>8081</port>
+    <master>Y</master>
+  </slaveserver>
+</slave_config>

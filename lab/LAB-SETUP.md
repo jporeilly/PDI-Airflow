@@ -145,9 +145,13 @@ Apache Airflow, with data lineage visible in Marquez:
 >
 > ```powershell
 > cd C:\PDI-Airflow
-> .\run-carte.ps1        # add -PdiHome <path> if PDI isn't auto-found
+> .\run-carte.ps1           # single master :8081 (add -PdiHome <path> if PDI isn't auto-found)
+> .\run-carte-cluster.ps1   # or a local cluster: master :8081 + slaves :8082/:8083
 > ```
 >
+> The cluster launcher starts a master and two slaves (each in its own
+> window); point the `pdi_cluster` connection at the master and run a
+> transformation carrying a cluster schema to fan work across the slaves.
 > The manual steps below are for running Carte straight from the source
 > repo.
 

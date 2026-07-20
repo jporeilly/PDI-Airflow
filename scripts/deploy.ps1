@@ -61,6 +61,7 @@ $kettleDir = Join-Path $Dest '.kettle'
 New-Item -ItemType Directory -Force $carteDir, $repoDir, $kettleDir | Out-Null
 
 Copy-Item (Join-Path $src 'lab\carte\carte-config.xml') $carteDir -Force
+Copy-Item (Join-Path $src 'lab\carte\cluster') $carteDir -Recurse -Force
 Copy-Item (Join-Path $src 'lab\carte\repository\*') $repoDir -Recurse -Force
 
 # repositories.xml with base_directory pointed at the deployed repo dir;
@@ -74,7 +75,8 @@ Set-Content -LiteralPath (Join-Path $kettleDir 'repositories.xml') -Value $repos
 Write-Host ""
 Write-Host "  Deployed to $Dest  (DAGs folder: $dags)" -ForegroundColor Green
 Write-Host "  Run the Studio:   cd $Dest ; .\run.ps1 -NoBuild"
-Write-Host "  Start Carte:      cd $Dest ; .\run-carte.ps1"
-Write-Host "                    (config: $carteDir\carte-config.xml, repo: $repoDir)"
+Write-Host "  Start Carte:      cd $Dest ; .\run-carte.ps1           # single master :8081"
+Write-Host "  Start a cluster:  cd $Dest ; .\run-carte-cluster.ps1   # master :8081 + slaves :8082/:8083"
+Write-Host "                    (config: $carteDir, repo: $repoDir)"
 Write-Host "  Windows lab:      cd $Dest\lab\docker ; docker compose -f docker-compose.win.yml up -d --build"
 Write-Host "  In the Studio Settings, set DAGs folder = $target"

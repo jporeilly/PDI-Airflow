@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Carte cluster slave 2 (port 8083). Reports to the master on 8081 so the
+  master can dispatch clustered transformation parts to it.
+-->
+<slave_config>
+  <masters>
+    <slaveserver>
+      <name>cluster-master</name>
+      <hostname>localhost</hostname>
+      <port>8081</port>
+      <username>cluster</username>
+      <password>cluster</password>
+      <master>Y</master>
+    </slaveserver>
+  </masters>
+  <report_to_masters>Y</report_to_masters>
+  <slaveserver>
+    <name>cluster-slave2</name>
+    <hostname>localhost</hostname>
+    <port>8083</port>
+    <username>cluster</username>
+    <password>cluster</password>
+    <master>N</master>
+  </slaveserver>
+</slave_config>

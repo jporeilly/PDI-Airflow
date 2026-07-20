@@ -1,5 +1,19 @@
 # Changelog
 
+## PDI-AirFlow v1.16.0 - 2026-07-20
+
+- **Local Carte cluster** (workshop capstone, Phase B). New
+  `run-carte-cluster.ps1` starts a master (:8081) + two slaves
+  (:8082/:8083), each in its own window; slaves register with the master
+  so a transformation carrying a cluster schema fans out across them.
+  Configs in `lab/carte/cluster/` (`master.xml`, `slave1.xml`,
+  `slave2.xml`); `deploy.ps1` stages them under `C:\PDI-Airflow\carte\cluster`.
+  `KETTLE_HOME` is set to the install folder (global `~/.kettle`
+  untouched). The seeded `pdi_cluster` connection now defaults to the
+  master port `:8081` (`CLUSTER_PORT` in `.env`). Point `pdi_cluster` at
+  the master (Studio picker / `pdi2dag --conn-id pdi_cluster`) to run
+  clustered. Both launchers validated (PS parse + XML well-formed).
+
 ## PDI-AirFlow v1.15.5 - 2026-07-20
 
 - **Real fix for scheduler-triggered tasks being SIGKILLed on the
