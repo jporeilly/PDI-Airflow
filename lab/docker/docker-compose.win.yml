@@ -1,0 +1,139 @@
+# Windows 11 / Docker Desktop lab — Apache Airflow 2.10.5.
+#
+#   docker compose -f docker-compose.win.yml up -d --build
+#
+# Airflow UI:  http://localhost:8088  (admin / admin)
+# Marquez UI:  http://localhost:3000     API: http://localhost:6001
+#
+# This is the Airflow 2.10 counterpart to docker-compose.yml (which
+# targets Airflow 3.3 on the Ubuntu VM). 2.10 keeps the classic
+# webserver + basic-auth REST API v1 and core operators, so the Studio
+# and pdi2dag talk to it with basic auth (they auto-detect v1 vs v2).
+#
+# DAGs: set DAGS_DIR in .env (default C:\PDI-Airflow\DAGS on Windows).
+
+x-airflow-common: &airflow-common
+  image: pdi-airflow-lab:2.10.5
+  environment: &airflow-env
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session
+    AIRFLOW__OPENLINEAGE__TRANSPORT: '{"type":"http","url":"http://marquez-api:5000","endpoint":"api/v1/lineage"}'
+    AIRFLOW__OPENLINEAGE__NAMESPACE: pdi
+    AIRFLOW_CONN_PDI_DEFAULT: '{"conn_type":"pentaho","host":"http://${CARTE_HOST:-host.docker.internal}","port":${CARTE_PORT:-8081},"login":"${PDI_REPO_USER:-admin}","password":"${PDI_REPO_PASSWORD:-password}","extra":{"rep":"${PDI_REPO:-Default}","carte_username":"${CARTE_USER:-cluster}","carte_password":"${CARTE_PASSWORD:-cluster}"}}'
+  volumes:
+    - ${DAGS_DIR:-C:/PDI-Airflow/DAGS}:/opt/airflow/dags
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  restart: unless-stopped
+
+services:
+
+  airflow-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 10
+
+  airflow-init:
+    <<: *airflow-common
+    build:
+      context: ../..
+      dockerfile: lab/docker/airflow2/Dockerfile
+    image: pdi-airflow-lab:2.10.5
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - >-
+        airflow db migrate &&
+        airflow users create --username admin --password admin
+        --firstname a --lastname d --role Admin
+        --email admin@example.com || true
+    restart: on-failure
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8088:8080"
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/health',timeout=5).status==200 else 1)"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  marquez-db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+      POSTGRES_DB: marquez
+    volumes:
+      - marquez-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "marquez"]
+      interval: 5s
+      retries: 10
+
+  marquez-api:
+    image: marquezproject/marquez:0.50.0
+    depends_on:
+      marquez-db:
+        condition: service_healthy
+    environment:
+      MARQUEZ_PORT: 5000
+      MARQUEZ_ADMIN_PORT: 5001
+      POSTGRES_HOST: marquez-db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: marquez
+      POSTGRES_USER: marquez
+      POSTGRES_PASSWORD: marquez
+    ports:
+      - "6001:5000"
+      - "6002:5001"
+
+  marquez-web:
+    image: marquezproject/marquez-web:0.50.0
+    depends_on:
+      - marquez-api
+    environment:
+      MARQUEZ_HOST: marquez-api
+      MARQUEZ_PORT: 5000
+      WEB_PORT: 3000
+    ports:
+      - "3000:3000"
+
+volumes:
+  airflow-db-data:
+  marquez-db-data:

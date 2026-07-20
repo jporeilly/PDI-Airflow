@@ -1,5 +1,40 @@
 # Lab Setup Guide — PDI + Apache Airflow + Marquez
 
+## Deployment options
+
+There are two supported ways to run the lab. Airflow always runs in
+**Linux Docker containers** (never native Windows — Airflow's SDK is
+POSIX-only); the difference is *where* those containers run and which
+Airflow version.
+
+| | **A — Windows 11 (dev)** | **B — Ubuntu 24.04 VM (target)** |
+|---|---|---|
+| Airflow | **2.10.5** | **3.3** |
+| Runs on | Windows Docker Desktop | Ubuntu Docker Engine |
+| Compose | `docker-compose.win.yml` | `docker-compose.yml` |
+| REST API | v1 (basic auth) | v2 (JWT) — client auto-detects |
+| DAGs folder | `C:\PDI-Airflow\DAGS` | a path on the VM |
+| Carte | `host.docker.internal` (same box) | `CARTE_HOST` = the Windows IP |
+| Studio + Carte | on the same Windows box | on Windows, connects over LAN |
+
+- **Option A** — everything on one Windows machine; the Studio deploys
+  DAGs into `C:\PDI-Airflow\DAGS`, which the Windows lab mounts. Start:
+  ```powershell
+  cd lab\docker
+  docker compose -f docker-compose.win.yml up -d --build
+  # (set DAGS_DIR / CARTE_HOST in .env if not the defaults)
+  ```
+- **Option B** — the Airflow 3.3 + Marquez lab runs on the Ubuntu VM
+  (alongside PDC); the Studio and Carte stay on Windows and connect
+  over the LAN. See **[UBUNTU-SETUP.md](UBUNTU-SETUP.md)**.
+
+Both read `lab/docker/.env` (`cp .env.example .env`). The Studio's
+`dags_folder` setting must match the host side of the DAGs mount.
+
+The rest of this guide covers Option A (Windows) in detail.
+
+---
+
 This guide builds a complete local lab on a Windows host (adaptable to
 Linux/macOS) for running Pentaho Data Integration workloads from
 Apache Airflow, with data lineage visible in Marquez:
@@ -108,16 +143,17 @@ Apache Airflow, with data lineage visible in Marquez:
 
 1. **Start Docker Desktop** and wait until it reports "running".
 
-2. **Bring up the stack**:
+2. **Bring up the stack** (Windows uses the 2.10 compose):
 
    ```powershell
-   cd C:\Projects\PDI-AirFlow\lab\docker
-   docker compose up -d --build          # first run builds the image
-   docker compose logs -f airflow-webserver   # watch until healthy
+   cd C:\PDI-Airflow\lab\docker
+   copy .env.example .env                 # then set DAGS_DIR if needed
+   docker compose -f docker-compose.win.yml up -d --build   # builds the 2.10 image
+   docker compose -f docker-compose.win.yml logs -f airflow-webserver
    ```
 
    The compose file:
-   - runs Airflow 2.10 as **separate webserver / scheduler /
+   - runs Airflow 2.10.5 as **separate webserver / scheduler /
      triggerer** services with Postgres, each `restart: unless-stopped`
      (a crashed process is auto-restarted — no more limping
      `standalone`);

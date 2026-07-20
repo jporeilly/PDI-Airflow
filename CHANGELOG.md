@@ -1,5 +1,20 @@
 # Changelog
 
+## PDI-AirFlow v2.1.0 - 2026-07-20
+
+- **Two documented deployment options** (LAB-SETUP.md + INSTALL.md):
+  - **A — Windows 11 / Airflow 2.10.5** via Docker Desktop
+    (`docker-compose.win.yml` + `airflow2/Dockerfile`), REST API v1,
+    DAGs in `C:\PDI-Airflow\DAGS`.
+  - **B — Ubuntu 24.04 VM / Airflow 3.3** (`docker-compose.yml`),
+    REST API v2/JWT, DAGs on the VM. The Studio's REST client
+    auto-detects v1 vs v2, so one Studio drives either.
+- **Configurable DAGs folder**: `DAGS_DIR` in `lab/docker/.env`
+  (default `../../workshop/dags`; Windows deploy uses
+  `C:\PDI-Airflow\DAGS`). `scripts/deploy.ps1` now creates the DAGS
+  folder and seeds it with the workshop DAGs.
+- GitHub: https://github.com/jporeilly/PDI-Airflow (private).
+
 ## PDI-AirFlow v2.0.0 - 2026-07-20
 
 **Migrated to Apache Airflow 3.3** (the lab runs it in Linux Docker;

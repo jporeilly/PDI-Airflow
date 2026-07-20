@@ -1,15 +1,15 @@
 # Version
 
-**Current version: 1.5.0** (2026-07-19)
+**Current version: 2.1.0** (2026-07-20)
 
 Components:
 
 | Component | Version |
 |---|---|
-| PDI-AirFlow (umbrella / pdi2dag) | 1.5.0 |
-| Migration Studio webapp | 1.3.0 |
+| PDI-AirFlow (umbrella / pdi2dag) | 2.1.0 |
+| Migration Studio webapp | 1.4.0 |
 | airflow-pentaho-provider (bundled) | 2.0.0 |
-| Targets | Airflow 2.7+ / 3.x, Astro Runtime, Marquez 0.50 |
+| Targets | **Airflow 2.10 (Windows lab) / 3.3 (Ubuntu VM)**, Marquez 0.50, Pentaho Data Catalog |
 
 Version sources of truth: `pyproject.toml` + `pdi2dag/__init__.py`
 (pdi2dag), and the provider's own `pyproject.toml` /

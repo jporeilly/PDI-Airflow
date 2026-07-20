@@ -49,17 +49,34 @@ to the Dockerfile (or publish the wheel to an internal index and use
 
 ## 3. The lab stack (Airflow + Marquez in Docker)
 
-Full walkthrough incl. PDI/Carte host setup:
-[lab/LAB-SETUP.md](lab/LAB-SETUP.md). Short version:
+Airflow always runs in **Linux containers** (never native Windows).
+Two deployment options — see the table in
+[lab/LAB-SETUP.md](lab/LAB-SETUP.md):
+
+**A — Windows 11, Airflow 2.10** (Docker Desktop, dev):
 
 ```powershell
-cd lab\docker
-docker compose up -d
+cd C:\PDI-Airflow\lab\docker
+copy .env.example .env
+docker compose -f docker-compose.win.yml up -d --build
 ```
+- DAGs folder: `C:\PDI-Airflow\DAGS` (set `DAGS_DIR` in `.env`; the
+  Studio's *Dags folder* setting must match). REST API v1 (basic auth).
 
-- Airflow: http://localhost:8088 (admin/admin)
-- Marquez: http://localhost:3000 (UI), :6001 (API)
-- Carte expected on the host at :8081 (cluster/cluster)
+**B — Ubuntu 24.04 VM, Airflow 3.3** (target — full guide:
+[lab/UBUNTU-SETUP.md](lab/UBUNTU-SETUP.md)):
+
+```bash
+cd ~/PDI-Airflow && CARTE_HOST=<windows-ip> ./lab/install-ubuntu.sh
+```
+- DAGs folder on the VM; `CARTE_HOST` points at the Windows Carte.
+  REST API v2 (JWT). The Studio (on Windows) connects over the LAN.
+
+Both:
+- Airflow: `:8088` (admin/admin) · Marquez: `:3000` UI, `:6001` API
+- Carte reachable at `CARTE_HOST:8081` (cluster/cluster)
+- The pdi2dag/Studio REST client **auto-detects v1 vs v2**, so the same
+  Studio drives either lab.
 
 ## Running the tests
 

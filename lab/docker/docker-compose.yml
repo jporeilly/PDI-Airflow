@@ -44,7 +44,9 @@ x-airflow-common: &airflow-common
     # local Docker Desktop test where Carte is on the Docker host.
     AIRFLOW_CONN_PDI_DEFAULT: '{"conn_type":"pentaho","host":"http://${CARTE_HOST:-host.docker.internal}","port":${CARTE_PORT:-8081},"login":"${PDI_REPO_USER:-admin}","password":"${PDI_REPO_PASSWORD:-password}","extra":{"rep":"${PDI_REPO:-Default}","carte_username":"${CARTE_USER:-cluster}","carte_password":"${CARTE_PASSWORD:-cluster}"}}'
   volumes:
-    - ../../workshop/dags:/opt/airflow/dags
+    # Host DAGs folder (workshop + Studio-generated). Override with
+    # DAGS_DIR in .env, e.g. an absolute path the Studio deploys into.
+    - ${DAGS_DIR:-../../workshop/dags}:/opt/airflow/dags
   extra_hosts:
     - "host.docker.internal:host-gateway"
   restart: unless-stopped
