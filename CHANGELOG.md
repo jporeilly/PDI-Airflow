@@ -1,5 +1,15 @@
 # Changelog
 
+## PDI-AirFlow v1.18.1 - 2026-07-20
+
+- **CSCU capstone DAGs moved under the mounted DAGs folder**
+  (`workshop/dags/cscu/`) so they load on the VM's Airflow after a
+  `git pull` (they were reference-only under `workshop/cscu/dags/`).
+  Capstone dry-run findings: scheduler green, `cscu_core` reachable
+  (5433), Carte loads the CSCU transformations from the staged
+  repository; live DB reads still need the `cscu_core` credential
+  defined in Carte (the lineage-shaped `.ktr` carry no password).
+
 ## PDI-AirFlow v1.18.0 - 2026-07-20
 
 - **CSCU capstone workshop** (`workshop/cscu/CSCU-CAPSTONE.md`) - the
