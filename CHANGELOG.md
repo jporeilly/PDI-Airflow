@@ -1,5 +1,15 @@
 # Changelog
 
+## PDI-AirFlow v1.20.2 - 2026-07-20
+
+- **Docs: MinIO VFS connection signer type.** Capstone Module 5 and a
+  LAB-SETUP troubleshooting row now record the correct PDI VFS field
+  values for the shared MinIO store, including the fix for
+  `IllegalArgumentException: unknown signer type: aws.endpoint` - the
+  Signature Version must be the AWS SDK signer type `AWSS3V4SignerType`,
+  not the algorithm string `AWS4-HMAC-SHA256`. With *Default S3
+  Connection* checked, the `s3://cscu-documents/...` path works unchanged.
+
 ## PDI-AirFlow v1.20.1 - 2026-07-20
 
 - **CSCU capstone: MinIO / object-store ingestion.** New

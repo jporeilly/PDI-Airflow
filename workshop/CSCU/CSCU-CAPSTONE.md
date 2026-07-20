@@ -120,10 +120,27 @@ reads the ACH export from `s3://cscu-documents/ach_payments_2026.csv`
 instead of a local file - so the PDI pipeline and the document catalog
 share one bucket.
 
-1. **Connection**: define a MinIO/S3 connection in PDI (or the S3 VFS
-   config) - endpoint `http://192.168.1.200:9000`, access key
-   `cscu_minio_user`, secret `minio_secret_123!`, bucket `cscu-documents`
-   (path-style; the same values the Glossary Generator uses).
+1. **Create a VFS connection** in Spoon (New VFS Connection ->
+   Amazon S3/Minio/HCP -> S3 Connection Type `Minio/HCP`):
+
+   | Field | Value |
+   |---|---|
+   | Connection Name | `cscu-minio` |
+   | Access Key | `cscu_minio_user` |
+   | Secret Key | `minio_secret_123!` |
+   | Endpoint | `http://192.168.1.200:9000` |
+   | **Signature Version** | **`AWSS3V4SignerType`** |
+   | PathStyle Access | ✅ (MinIO requires path-style) |
+   | Default S3 Connection | ✅ (so plain `s3://…` URLs route through this endpoint) |
+   | Root Folder Path | `/` |
+
+   > **Gotcha:** the Signature Version field wants the AWS SDK **signer
+   > type** `AWSS3V4SignerType` - **not** the algorithm string
+   > `AWS4-HMAC-SHA256`, which fails with
+   > `IllegalArgumentException: unknown signer type`. With *Default S3
+   > Connection* checked, the `s3://cscu-documents/…` path in
+   > `import_ach_minio.ktr` works unchanged and the lineage stays clean.
+
 2. **Run** `import_ach_minio` on Carte (single or clustered) via its DAG.
 3. **Lineage**: the input dataset is `s3://cscu-documents/ach_payments_2026.csv`
    (object-store scheme + bucket kept as the namespace), feeding
