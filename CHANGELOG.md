@@ -1,5 +1,20 @@
 # Changelog
 
+## PDI-AirFlow v1.17.2 - 2026-07-20
+
+- **CSCU samples re-themed to Copper State Credit Union** (financial
+  services), from the mistaken student-enrollment theme, using the real
+  `cscu_core` schema from `PDC-Scenarios` (members, accounts,
+  transactions, branches, loans). New `samples/cscu/`:
+  `extract_transactions.ktr` (posted txns -> mart staging),
+  `build_member_mart.ktr` (member 360: members x branches x accounts x
+  transactions), `import_ach_csv.ktr` (ACH CSV -> staging), and
+  `cscu_daily_load.kjb` (extract -> build, mail-on-failure). Connections
+  target the shared lab (`192.168.1.200:5433`, `cscu_core`, `pdc_user`).
+  Old enrollment samples removed; `test_carte_enrichment.py` /
+  `test_generator.py` and the LAB-SETUP convert example updated. 45 tests
+  pass. Groundwork for the CSCU capstone (Phase C).
+
 ## PDI-AirFlow v1.17.1 - 2026-07-20
 
 - **Secrets encrypted at rest (Windows DPAPI)** — completes the

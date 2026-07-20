@@ -135,11 +135,11 @@ class TestFileDatasets:
         from pdi2dag.parser import parse_trans_detail
         from pdi2dag.lineage import trans_datasets
         d = parse_trans_detail(os.path.join(
-            SAMPLES, 'cscu', 'import_transcripts_csv.ktr'))
+            SAMPLES, 'cscu', 'import_ach_csv.ktr'))
         ins, outs = trans_datasets(d)
         assert ins[0]['namespace'] == 'file'
-        assert ins[0]['name'] == '/data/cscu/transcripts_2026.csv'
-        assert outs[0]['name'] == 'cscu_dw.staging.transcripts_stg'
+        assert ins[0]['name'] == '/data/cscu/ach_payments_2026.csv'
+        assert outs[0]['name'] == 'cscu_mart.staging.ach_stg'
 
     def test_s3_and_local_file_naming(self):
         from pdi2dag.lineage import _file_dataset

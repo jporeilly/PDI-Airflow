@@ -245,7 +245,7 @@ In the Studio's **Configure** page the *Carte connection* field is a
 picker over the `pentaho`-type connections; or with the CLI:
 
 ```powershell
-pdi2dag convert build_student_mart.ktr --conn-id pdi_cluster
+pdi2dag convert build_member_mart.ktr --conn-id pdi_cluster
 # -> CarteTransOperator(..., pdi_conn_id='pdi_cluster')
 ```
 

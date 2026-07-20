@@ -12,16 +12,16 @@ from pdi2dag.parser import parse_trans_detail
 CSCU = os.path.join(os.path.dirname(os.path.dirname(__file__)),
                     'samples', 'cscu')
 
-# A Carte transStatus for extract_enrollment (Read Enrollment ->
+# A Carte transStatus for extract_transactions (Read Transactions ->
 # Load Staging), as xmltodict would parse the REST XML.
 TRANS_STATUS_XML = """<?xml version="1.0"?>
 <transstatus>
-  <transname>extract_enrollment</transname>
+  <transname>extract_transactions</transname>
   <id>abc-123</id>
   <status_desc>Finished</status_desc>
   <stepstatuslist>
     <stepstatus>
-      <stepname>Read Enrollment</stepname>
+      <stepname>Read Transactions</stepname>
       <linesRead>0</linesRead><linesWritten>4820</linesWritten>
       <linesInput>4820</linesInput><linesOutput>0</linesOutput>
       <linesUpdated>0</linesUpdated><linesRejected>0</linesRejected>
@@ -46,7 +46,7 @@ class TestParseMetrics:
 
     def test_per_step_metrics(self):
         m = _metrics()
-        assert m['Read Enrollment']['input'] == 4820
+        assert m['Read Transactions']['input'] == 4820
         assert m['Load Staging']['written'] == 4820
         assert m['Load Staging']['errors'] == 0
 
@@ -66,16 +66,16 @@ class TestDatasetRowCounts:
 
     def test_row_counts_attached(self):
         detail = parse_trans_detail(
-            os.path.join(CSCU, 'extract_enrollment.ktr'))
+            os.path.join(CSCU, 'extract_transactions.ktr'))
         ins, outs = trans_datasets(detail, _metrics())
-        assert ins[0]['name'] == 'cscu.registrar.enrollment'
+        assert ins[0]['name'] == 'cscu_core.cscu_core.transactions'
         assert ins[0]['rowCount'] == 4820
-        assert outs[0]['name'] == 'cscu_dw.staging.enrollment_stg'
+        assert outs[0]['name'] == 'cscu_mart.staging.txn_stg'
         assert outs[0]['rowCount'] == 4820
 
     def test_no_metrics_no_rowcount(self):
         detail = parse_trans_detail(
-            os.path.join(CSCU, 'extract_enrollment.ktr'))
+            os.path.join(CSCU, 'extract_transactions.ktr'))
         ins, outs = trans_datasets(detail)
         assert 'rowCount' not in ins[0]
         assert 'rowCount' not in outs[0]
@@ -85,9 +85,9 @@ class TestEnrichedEvents:
 
     def test_output_statistics_facet(self):
         detail = parse_trans_detail(
-            os.path.join(CSCU, 'extract_enrollment.ktr'))
+            os.path.join(CSCU, 'extract_transactions.ktr'))
         events = build_pdc_trans_events(
-            detail, '/home/cscu/etl/extract_enrollment',
+            detail, '/home/cscu/etl/extract_transactions',
             step_metrics=_metrics())
         complete = [e for e in events if e['eventType'] == 'COMPLETE'][0]
         out = complete['outputs'][0]
@@ -97,8 +97,8 @@ class TestEnrichedEvents:
 
     def test_errors_produce_fail_event(self):
         detail = parse_trans_detail(
-            os.path.join(CSCU, 'extract_enrollment.ktr'))
-        bad = {'Read Enrollment': {'input': 10, 'errors': 3}}
+            os.path.join(CSCU, 'extract_transactions.ktr'))
+        bad = {'Read Transactions': {'input': 10, 'errors': 3}}
         events = build_pdc_trans_events(
-            detail, '/home/cscu/etl/extract_enrollment', step_metrics=bad)
+            detail, '/home/cscu/etl/extract_transactions', step_metrics=bad)
         assert any(e['eventType'] == 'FAIL' for e in events)

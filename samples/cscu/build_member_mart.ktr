@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<transformation>
+  <info>
+    <name>build_member_mart</name>
+    <description>Build the member 360 mart: each member with their branch, account rollups and recent transaction activity.</description>
+    <directory>/home/cscu/etl</directory>
+    <parameters/>
+  </info>
+  <connection>
+    <name>cscu-core</name>
+    <server>192.168.1.200</server>
+    <type>POSTGRESQL</type>
+    <access>Native</access>
+    <database>cscu_core</database>
+    <username>pdc_user</username>
+    <port>5433</port>
+  </connection>
+  <connection>
+    <name>cscu-mart</name>
+    <server>192.168.1.200</server>
+    <type>POSTGRESQL</type>
+    <access>Native</access>
+    <database>cscu_mart</database>
+    <username>cscu_etl</username>
+    <port>5433</port>
+  </connection>
+  <step>
+    <name>Read Member Activity</name>
+    <type>TableInput</type>
+    <connection>cscu-core</connection>
+    <sql>SELECT m.mbr_id, m.mbr_no, m.first_nm, m.last_nm, m.mbr_status,
+       b.br_name, b.br_city,
+       count(DISTINCT a.acct_id) AS acct_cnt,
+       coalesce(sum(a.bal_amt), 0) AS total_bal_amt,
+       count(t.txn_id) AS txn_cnt,
+       coalesce(sum(t.txn_amt), 0) AS txn_total_amt
+FROM cscu_core.members m
+JOIN cscu_core.branches b ON b.br_id = m.br_id
+LEFT JOIN cscu_core.accounts a ON a.mbr_id = m.mbr_id
+LEFT JOIN cscu_core.transactions t ON t.acct_id = a.acct_id
+GROUP BY m.mbr_id, m.mbr_no, m.first_nm, m.last_nm, m.mbr_status, b.br_name, b.br_city</sql>
+  </step>
+  <step>
+    <name>Write Member Mart</name>
+    <type>TableOutput</type>
+    <connection>cscu-mart</connection>
+    <schema>mart</schema>
+    <table>member_360</table>
+  </step>
+  <order>
+    <hop><from>Read Member Activity</from><to>Write Member Mart</to><enabled>Y</enabled></hop>
+  </order>
+</transformation>
