@@ -44,6 +44,8 @@ from pydantic import BaseModel, Field
 
 from pdi2dag import __version__
 from pdi2dag.airflow_api import AirflowClient
+from pdi2dag.dpapi import protect as dpapi_protect
+from pdi2dag.dpapi import unprotect as dpapi_unprotect
 from pdi2dag.generator import ConvertOptions, convert
 from pdi2dag.lineage import (build_job_model_events,
                              build_pdc_etl_events,
@@ -184,6 +186,11 @@ class SettingsModel(BaseModel):
 
 # ---------------------------------------------------------- settings
 
+# Password fields are stored DPAPI-encrypted at rest (Windows) and
+# decrypted for in-process use; see pdi2dag.dpapi.
+SECRET_FIELDS = ('airflow_password', 'carte_password', 'pdc_password')
+
+
 def load_settings():
     settings = dict(DEFAULT_SETTINGS)
     if SETTINGS_FILE.exists():
@@ -192,6 +199,9 @@ def load_settings():
                 SETTINGS_FILE.read_text(encoding='utf-8')))
         except (OSError, ValueError):
             pass
+    for field in SECRET_FIELDS:
+        if settings.get(field):
+            settings[field] = dpapi_unprotect(settings[field])
     return settings
 
 
@@ -207,8 +217,14 @@ def post_settings(body: SettingsModel):
     settings = load_settings()
     settings.update({k: v for k, v in body.model_dump().items()
                      if v is not None})
+    # Encrypt secrets at rest; the returned dict keeps plaintext for the
+    # (local) caller/UI.
+    to_write = dict(settings)
+    for field in SECRET_FIELDS:
+        if to_write.get(field):
+            to_write[field] = dpapi_protect(to_write[field])
     SETTINGS_FILE.write_text(
-        json.dumps(settings, indent=2), encoding='utf-8')
+        json.dumps(to_write, indent=2), encoding='utf-8')
     return settings
 
 

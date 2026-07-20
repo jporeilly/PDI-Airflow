@@ -1,5 +1,18 @@
 # Changelog
 
+## PDI-AirFlow v1.17.1 - 2026-07-20
+
+- **Secrets encrypted at rest (Windows DPAPI)** — completes the
+  production-hardening batch (installer + CI + service + secrets). The
+  Studio's `airflow_password`, `carte_password` and `pdc_password` are
+  now stored in `settings.json` as `dpapi:<base64>`, encrypted with
+  `CryptProtectData` (scoped to the current user + machine) and decrypted
+  only in-process. New `pdi2dag/dpapi.py` (`protect`/`unprotect`, ctypes,
+  no extra dependency) with a plaintext pass-through fallback off
+  Windows. Verified end-to-end: the API still returns plaintext to the
+  local UI while `settings.json` holds only ciphertext. 4 new tests
+  (45 pass, 1 skipped off-Windows). Studio webapp -> 1.14.2.
+
 ## PDI-AirFlow v1.17.0 - 2026-07-20
 
 Production-hardening pass (part 1 of 4 requested: installer + CI +
