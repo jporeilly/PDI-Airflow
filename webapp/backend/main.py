@@ -33,6 +33,7 @@ import threading
 import uuid
 from pathlib import Path
 from typing import Dict, List, Optional
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
 from fastapi import FastAPI, Request
@@ -628,6 +629,29 @@ def carte_status():
             'url': url}
 
 
+def _marquez_web_url(settings):
+    """Marquez UI URL for the 'open the graph' links. The UI and API run
+    on the same host, so when the API URL points at a remote host but the
+    UI URL is still localhost (the default), follow the API host and keep
+    the UI's port/scheme — otherwise the graph link opens the wrong (or a
+    dead) local Marquez. An explicitly-set remote UI URL is respected."""
+    web = (settings.get('marquez_web_url') or '').strip()
+    api = (settings.get('marquez_url') or '').strip()
+    if not web:
+        return api
+    local = ('localhost', '127.0.0.1', '')
+    try:
+        w, a = urlsplit(web), urlsplit(api)
+        if (w.hostname or '') in local and a.hostname \
+                and a.hostname not in local:
+            netloc = a.hostname + (':%d' % w.port if w.port else '')
+            return urlunsplit((w.scheme or a.scheme or 'http', netloc,
+                               w.path, w.query, w.fragment))
+    except ValueError:
+        pass
+    return web
+
+
 @app.get('/api/marquez/status', tags=['services'],
          summary='Marquez reachability and namespace count')
 def marquez_status():
@@ -645,7 +669,7 @@ def marquez_status():
         except requests.RequestException:
             reachable, count = False, None
     return {'reachable': reachable, 'url': url,
-            'web_url': settings.get('marquez_web_url') or url,
+            'web_url': _marquez_web_url(settings),
             'namespace_count': count}
 
 
@@ -670,7 +694,7 @@ def marquez_jobs():
         jobs = rs.json().get('jobs', [])
     return {
         'namespace': ns,
-        'marquez_url': settings['marquez_web_url'],
+        'marquez_url': _marquez_web_url(settings),
         'jobs': [
             {
                 'name': j.get('name'),

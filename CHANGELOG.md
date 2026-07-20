@@ -1,5 +1,18 @@
 # Changelog
 
+## PDI-AirFlow v1.15.3 - 2026-07-20
+
+- **Fix: "Open the graph in Marquez" ignored the Settings override.**
+  The link used the *Marquez UI URL* setting, which stays `localhost:3000`
+  by default — so pointing only the *Marquez API URL* at a remote host
+  (e.g. the VM) left the graph link opening a dead local Marquez. Now,
+  when the UI URL is still localhost but the API URL is remote, the link
+  **follows the API host** (keeping the UI port/scheme) — verified the
+  sidebar link and the Lineage button both resolve to the VM's Marquez.
+  An explicitly-set remote UI URL is still respected.
+- **Favicon** added (`favicon.svg`, a PDI ⇄ Airflow mark in the app
+  accent) and referenced from `index.html`. Studio webapp → 1.14.1.
+
 ## PDI-AirFlow v1.15.2 - 2026-07-20
 
 Documentation + lab-content pass so the workshop runs clean end-to-end
