@@ -308,4 +308,4 @@ CSCU banking job in the Studio, run it on Carte **single and clustered**
 under the scheduler, and trace one member's data from the `cscu_core`
 source tables into the mart in **Marquez + Pentaho Data Catalog**.
 
-→ **[workshop/cscu/CSCU-CAPSTONE.md](cscu/CSCU-CAPSTONE.md)**
+→ **[workshop/CSCU/CSCU-CAPSTONE.md](cscu/CSCU-CAPSTONE.md)**

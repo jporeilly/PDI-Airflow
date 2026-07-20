@@ -95,6 +95,7 @@ DEFAULT_SETTINGS = {
     'carte_url': 'http://localhost:8081',
     'carte_user': 'cluster',
     'carte_password': 'cluster',
+    'carte_architecture': 'single',   # single | cluster
     'marquez_url': 'http://localhost:6001',
     'marquez_web_url': 'http://localhost:3000',
     'marquez_namespace': 'pdi',
@@ -220,6 +221,7 @@ class SettingsModel(BaseModel):
     carte_url: Optional[str] = None
     carte_user: Optional[str] = None
     carte_password: Optional[str] = None
+    carte_architecture: Optional[str] = None
     marquez_url: Optional[str] = None
     marquez_web_url: Optional[str] = None
     marquez_namespace: Optional[str] = None

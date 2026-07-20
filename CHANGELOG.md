@@ -1,16 +1,37 @@
 # Changelog
 
+## PDI-AirFlow v1.20.0 - 2026-07-20
+
+- **Per-vertical scenario structure** mirroring PDC-Scenarios. Each
+  scenario has `pipelines/<SCENARIO>/` (the ETL, repo paths
+  /<SCENARIO>/...) and `workshop/<SCENARIO>/` (the capstone). Renamed
+  `workshop/cscu` -> `workshop/CSCU` (and `workshop/dags/cscu` ->
+  `workshop/dags/CSCU`) for consistency, and scaffolded the other three
+  verticals with capstone templates wired to their PDC-Scenarios
+  databases: **HEALTH** (Lakeshore Health Partners, `lhp_clinical`),
+  **MFG** (Cascade Precision Components, `cpc_mfg`), **RETAIL** (Canyon
+  Trail Outfitters, `cto_retail`). New `workshop/README.md` scenarios
+  index. Adding a vertical = drop a `pipelines/<SCENARIO>/` folder.
+- **Carte architecture toggle** in the Studio (Settings -> Carte / PDI ->
+  Architecture: single | cluster). It sets the default Carte connection
+  (`pdi_default` / `pdi_cluster`) for generated DAGs and shows which
+  launcher to run (`run-carte.ps1` / `run-carte-cluster.ps1`). One
+  obvious switch for the single-vs-cluster architecture; the Configure
+  picker still overrides per DAG. Webapp -> 1.15.0.
+
 ## PDI-AirFlow v1.19.0 - 2026-07-20
 
 - **Repository layout: content and definition split.** The Carte file
   repository now separates *content* from *definition*:
   `pipelines\<scenario>\` holds the `.ktr`/`.kjb` (e.g. `pipelines\demo\`,
-  `pipelines\CSCU\`) and `repositoriesepositories.xml` is just the
+  `pipelines\CSCU\`) and `repositories
+epositories.xml` is just the
   definition (`base_directory` -> `C:\PDI-Airflow\pipelines`). Repo paths
   changed accordingly: `/home/bi/*` -> `/demo/*`, `/home/cscu/etl/*` ->
   `/CSCU/*`. `deploy.ps1` stages `pipelines\` + `repositories\` + `.kettle\`
   (protected from the /MIR purge); `run-carte.ps1` syncs
-  `repositoriesepositories.xml` into `.kettle\` so one file is
+  `repositories
+epositories.xml` into `.kettle\` so one file is
   authoritative and the global `~/.kettle` stays untouched. The old ad-hoc
   `C:\PDI-Repo` is retired. Samples, generated DAGs, workshop DAGs,
   tests, LAB-SETUP and the capstone updated. 45 tests pass.
@@ -18,8 +39,8 @@
 ## PDI-AirFlow v1.18.1 - 2026-07-20
 
 - **CSCU capstone DAGs moved under the mounted DAGs folder**
-  (`workshop/dags/cscu/`) so they load on the VM's Airflow after a
-  `git pull` (they were reference-only under `workshop/cscu/dags/`).
+  (`workshop/dags/CSCU/`) so they load on the VM's Airflow after a
+  `git pull` (they were reference-only under `workshop/CSCU/dags/`).
   Capstone dry-run findings: scheduler green, `cscu_core` reachable
   (5433), Carte loads the CSCU transformations from the staged
   repository; live DB reads still need the `cscu_core` credential
@@ -27,14 +48,14 @@
 
 ## PDI-AirFlow v1.18.0 - 2026-07-20
 
-- **CSCU capstone workshop** (`workshop/cscu/CSCU-CAPSTONE.md`) - the
+- **CSCU capstone workshop** (`workshop/CSCU/CSCU-CAPSTONE.md`) - the
   bring-it-all-together track on the Copper State Credit Union banking
   pipeline: migrate `cscu_daily_load.kjb` in the Studio, run it on Carte
   **single and clustered** under the (now-verified) scheduler, and trace
   a member's data from `cscu_core` source tables into the mart in
   **Marquez + PDC**. Reuses the same `cscu_core` DB / PDC as the
   PDC-Scenarios lab. Ships the generated reference DAGs
-  (`workshop/cscu/dags/`) and stages the CSCU transformations in the
+  (`workshop/CSCU/dags/`) and stages the CSCU transformations in the
   Carte file repository (`lab/carte/repository/home/cscu/etl/`) so they
   run live. Linked from README + WORKSHOP.
 

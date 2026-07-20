@@ -23,7 +23,7 @@ traced from source tables through the mart.
 | `import_ach_csv.ktr` | ACH payments CSV -> `staging.ach_stg` |
 | `cscu_daily_load.kjb` | `extract_transactions` -> `build_member_mart` (mail-on-failure) |
 
-Generated DAGs live in [`workshop/dags/cscu/`](../dags/cscu/) — under the
+Generated DAGs live in [`workshop/dags/CSCU/`](../dags/CSCU/) — under the
 mounted DAGs folder, so they load on the VM's Airflow after a `git pull`.
 
 ## Prerequisites

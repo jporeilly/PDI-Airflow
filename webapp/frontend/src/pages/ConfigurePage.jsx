@@ -26,6 +26,15 @@ export default function ConfigurePage({ onNavigate }) {
     apiGet('/api/airflow/connections')
       .then((r) => setConns(r.connections || []))
       .catch(() => setConns([]))
+    // Default the Carte connection to match the architecture toggle
+    // (Settings), unless the user already picked one.
+    apiGet('/api/settings')
+      .then((s) => {
+        if (s.carte_architecture === 'cluster' && o.conn_id === 'pdi_default') {
+          setOptions({ conn_id: 'pdi_cluster' })
+        }
+      })
+      .catch(() => {})
   }, [])
 
   if (roots.length === 0) {

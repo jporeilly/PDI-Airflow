@@ -11,7 +11,7 @@ Install on Windows in one step: `.\install.ps1` (see [INSTALL.md](INSTALL.md)).
 | Part | What | Where |
 |---|---|---|
 | Provider | Modernized Airflow provider (Carte + Kitchen/Pan operators, deferrable support) | [airflow-pentaho-provider/](airflow-pentaho-provider/) |
-| Workshop | 12-module hands-on workshop + a **CSCU banking capstone** (migrate -> single/cluster Carte -> Marquez + PDC lineage) | [workshop/WORKSHOP.md](workshop/WORKSHOP.md) · [CSCU capstone](workshop/cscu/CSCU-CAPSTONE.md) |
+| Workshop | 12-module hands-on workshop + **per-vertical capstones** (CSCU built; HEALTH/MFG/RETAIL scaffolds) — migrate -> single/cluster Carte -> Marquez + PDC lineage | [workshop/WORKSHOP.md](workshop/WORKSHOP.md) · [scenarios](workshop/README.md) |
 | Lab | Docker stack — **Airflow 2.10.5 (Windows)** / **3.3 (Ubuntu VM)** + Marquez. Windows/host: [lab/LAB-SETUP.md](lab/LAB-SETUP.md) · **Ubuntu 24.04 VM**: [lab/UBUNTU-SETUP.md](lab/UBUNTU-SETUP.md) |
 | Migration app (CLI) | `pdi2dag` — convert .ktr/.kjb into scheduled Airflow DAGs | [pdi2dag/](pdi2dag/) |
 | Migration Studio (web) | React (Vite) + FastAPI app over pdi2dag — PDC-suite design | [webapp/](webapp/) |
@@ -146,7 +146,7 @@ transformation's step graph:
 
 ```powershell
 pdi2dag lineage samples\nightly_etl.kjb `
-    --ktr-dir lab\docker\carte\repository\home\bi `
+    --ktr-dir lab\carte\pipelines\demo `
     --marquez-url http://localhost:6001 --namespace pdi
 ```
 

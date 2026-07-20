@@ -13,6 +13,7 @@ const GROUPS = [
     ['airflow_password', 'Airflow password', ''],
   ] },
   { title: 'Carte / PDI', test: 'carte', fields: [
+    ['carte_architecture', 'Architecture', ''],
     ['carte_url', 'Carte URL', 'http://localhost:8081'],
     ['carte_user', 'Carte user', 'cluster'],
     ['carte_password', 'Carte password', ''],
@@ -103,7 +104,20 @@ export default function SettingsPage() {
           <div className="form-grid">
             {g.fields.map(([key, label, placeholder]) => (
               <label key={key}>{label}
-                {key === 'dags_folder' ? (
+                {key === 'carte_architecture' ? (
+                  <>
+                    <select className="text" value={form[key] ?? 'single'}
+                      onChange={(e) => setForm({ ...form, [key]: e.target.value })}>
+                      <option value="single">single — one Carte master</option>
+                      <option value="cluster">cluster — master + slaves</option>
+                    </select>
+                    <span className="field-note">
+                      {(form[key] ?? 'single') === 'cluster'
+                        ? 'Run .\\run-carte-cluster.ps1 · DAGs default to the pdi_cluster connection'
+                        : 'Run .\\run-carte.ps1 · DAGs default to the pdi_default connection'}
+                    </span>
+                  </>
+                ) : key === 'dags_folder' ? (
                   <span className="field-row">
                     <input
                       className="text"
