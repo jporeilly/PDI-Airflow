@@ -1,5 +1,21 @@
 # Changelog
 
+## PDI-AirFlow v1.15.1 - 2026-07-20
+
+- **Fix: scheduler/UI-triggered Carte tasks were SIGKILLed on the
+  Airflow 3.3 VM.** The LocalExecutor forks a multi-threaded parent to
+  run each task; on Python 3.12+/3.13 the OpenLineage listener's
+  START-event emission deadlocks in the forked child, so tasks hung at
+  `Pre Execute` and the supervisor reaped them with SIGKILL — while
+  `airflow tasks test` (in-process, no fork) worked fine
+  ([apache/airflow#47160](https://github.com/apache/airflow/issues/47160)).
+  Set `AIRFLOW__CORE__EXECUTE_TASKS_NEW_PYTHON_INTERPRETER=true` in
+  `docker-compose.yml` so each task runs in a fresh interpreter instead
+  of forking, keeping OpenLineage on. The Windows lab
+  (`docker-compose.win.yml`, Airflow 2.10.5 / Python 3.10) is
+  unaffected and left as-is. End-to-end verified: Airflow → Windows
+  Carte → transformation runs → START/COMPLETE lineage in Marquez.
+
 ## PDI-AirFlow v1.15.0 - 2026-07-20
 
 - **Lab ships two Carte connections out of the box.** `airflow-init`

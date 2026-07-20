@@ -124,7 +124,7 @@ Apache Airflow, with data lineage visible in Marquez:
 2. **Start Carte**:
 
    ```powershell
-   cd C:\Pentaho\data-integration
+   cd C:\Pentaho\design-tools\data-integration   # or your PDI folder
    .\Carte.bat C:\Projects\PDI-AirFlow\lab\carte\carte-config.xml
    ```
 
@@ -306,4 +306,5 @@ OpenLineage transport URL `http://host.docker.internal:5000`.
 | Carte returns 401 | `carte_username`/`carte_password` in the connection extra don't match `pwd\kettle.pwd`. |
 | DAG not appearing | It only parses if the provider import works: `docker compose exec airflow airflow dags list-import-errors`. |
 | No lineage in Marquez | Check `docker compose logs airflow` for `openlineage` errors and that the transport URL uses `marquez-api:5000`. |
+| Scheduler/UI-triggered task fails fast (log stops at `Pre Execute`), scheduler shows `SIGKILL` / `Workload execution failed`, but `airflow tasks test <dag> <task>` succeeds | Python 3.12+/3.13 fork-deadlock: the OpenLineage listener deadlocks in the forked worker ([airflow#47160](https://github.com/apache/airflow/issues/47160)). Fixed on the 3.3 VM by `AIRFLOW__CORE__EXECUTE_TASKS_NEW_PYTHON_INTERPRETER=true` (in `docker-compose.yml`); `docker compose up -d` to apply. |
 | Deferrable task stuck in `deferred` | Triggerer must be running — `standalone` includes it; on custom setups run `airflow triggerer`. |
