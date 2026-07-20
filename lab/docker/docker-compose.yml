@@ -77,11 +77,19 @@ services:
     entrypoint: /bin/bash
     command:
       - -c
+      # After the DB is up: create the admin user, then seed a second
+      # Carte connection (pdi_cluster) into the metadata DB so it shows
+      # in the Studio's connection picker — demonstrating the cluster
+      # topology alongside the env-var pdi_default (single server). It
+      # points at a cluster *master*; set CLUSTER_HOST/PORT in .env.
+      # delete-then-add keeps it idempotent across restarts.
       - >-
         airflow db migrate &&
-        airflow users create --username admin --password admin
+        (airflow users create --username admin --password admin
         --firstname a --lastname d --role Admin
-        --email admin@example.com || true
+        --email admin@example.com || true);
+        airflow connections delete pdi_cluster >/dev/null 2>&1 || true;
+        airflow connections add pdi_cluster --conn-json '{"conn_type":"pentaho","host":"http://${CLUSTER_HOST:-carte-master}","port":${CLUSTER_PORT:-8080},"login":"${PDI_REPO_USER:-admin}","password":"${PDI_REPO_PASSWORD:-password}","extra":{"rep":"${PDI_REPO:-Default}","carte_username":"${CARTE_USER:-cluster}","carte_password":"${CARTE_PASSWORD:-cluster}"}}' || true
     restart: on-failure
     depends_on:
       airflow-db:

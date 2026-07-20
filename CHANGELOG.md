@@ -1,5 +1,21 @@
 # Changelog
 
+## PDI-AirFlow v1.15.0 - 2026-07-20
+
+- **Lab ships two Carte connections out of the box.** `airflow-init`
+  (both `docker-compose.yml` and `docker-compose.win.yml`) now seeds a
+  `pdi_cluster` connection into the metadata DB — the cluster topology
+  (points at a master via new `CLUSTER_HOST`/`CLUSTER_PORT` in `.env`),
+  alongside the env-var `pdi_default` (single server). Because DB
+  connections enumerate over the REST API, `pdi_cluster` shows in the
+  Studio's connection picker; delete-then-add keeps the seed idempotent
+  across restarts. Validated with `docker compose config` on both.
+- **LAB-SETUP.md → "Configuring Carte with Airflow (single / custom
+  port / cluster)"**: the connection model, single/custom-port/cluster
+  recipes, per-DAG selection via `pdi_conn_id`, the shipped
+  `pdi_default` vs `pdi_cluster` table, and the env-var-vs-DB
+  enumeration gotcha with the `airflow connections add` recipe.
+
 ## PDI-AirFlow v1.14.0 - 2026-07-20
 
 - **Carte connection picker on Configure.** The *Carte connection*

@@ -140,6 +140,73 @@ Apache Airflow, with data lineage visible in Marquez:
    networks — the Airflow container connects in via
    `host.docker.internal`.
 
+### Configuring Carte with Airflow (single / custom port / cluster)
+
+Airflow talks to Carte through an **Airflow connection** (type
+`pentaho`). Every `CarteJobOperator` / `CarteTransOperator` POSTs
+`executeJob` / `executeTrans` to that connection's `host:port` and polls
+status there — so a task always targets **one** Carte endpoint, chosen
+by its `pdi_conn_id` (default `pdi_default`). Clustering is a PDI-side
+concern; Airflow just submits to the server you point it at.
+
+Connection fields: **Host** (include `http://`/`https://`), **Port**,
+**Login/Password** = PDI *repository* creds, **Extra** =
+`{"rep","carte_username","carte_password","verify_ssl","timeout"}` where
+`carte_*` is Carte's own basic auth (`cluster`/`cluster`).
+
+**Single server, default or custom port (e.g. 9000).** Just set the
+port. In the lab it's parameterised in `.env`:
+
+```bash
+CARTE_HOST=192.168.1.100
+CARTE_PORT=9000          # -> env-var connection pdi_default
+```
+
+Outside the lab: Airflow UI → *Admin → Connections → pdi_default → Port*,
+or set the `AIRFLOW_CONN_PDI_DEFAULT` env var.
+
+**Cluster (master + slaves).** Point the connection at the **master**:
+
+```bash
+CLUSTER_HOST=carte-master.lan
+CLUSTER_PORT=8080        # -> DB connection pdi_cluster (seeded by airflow-init)
+```
+
+The `.ktr` carries the cluster schema (master + slave definitions, steps
+flagged to run clustered); when the master receives `executeTrans` it
+distributes to the slaves. Airflow submits to and polls the **master**
+only — no slave config on the Airflow side.
+
+**Choosing per DAG (dev single vs prod cluster).** Define several
+connections and pick one per DAG via `pdi_conn_id`. The lab ships two out
+of the box:
+
+| Connection | Topology | Defined as | Lists in picker? |
+|---|---|---|---|
+| `pdi_default` | single server | env var (`AIRFLOW_CONN_PDI_DEFAULT`) | offered as fallback |
+| `pdi_cluster` | cluster master | DB (seeded by `airflow-init`) | yes |
+
+In the Studio's **Configure** page the *Carte connection* field is a
+picker over the `pentaho`-type connections; or with the CLI:
+
+```powershell
+pdi2dag convert build_student_mart.ktr --conn-id pdi_cluster
+# -> CarteTransOperator(..., pdi_conn_id='pdi_cluster')
+```
+
+**Gotcha — env-var vs DB connections.** Airflow's REST API (and so the
+picker) only enumerates connections stored in the **metadata DB**.
+Env-var connections like `pdi_default` work at runtime but don't list —
+hence `pdi_default` is always offered as a fallback. To make a new Carte
+selectable in the picker, add it to the DB:
+
+```bash
+docker compose exec airflow-scheduler airflow connections add pdi_edge \
+  --conn-type pentaho --conn-host http://carte-edge.lan --conn-port 8081 \
+  --conn-login admin --conn-password '***' \
+  --conn-extra '{"rep":"Default","carte_username":"cluster","carte_password":"cluster"}'
+```
+
 ## Part 3 — Airflow + Marquez (Docker)
 
 1. **Start Docker Desktop** and wait until it reports "running".
