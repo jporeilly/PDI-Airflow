@@ -1,26 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Kettle file-repository definition for the lab.
+  Kettle file-repository DEFINITION for the lab.
 
-  Place this file in the .kettle folder of the user that runs Carte
-  (Windows: C:\Users\<you>\.kettle\repositories.xml,
-   Linux: ~/.kettle/repositories.xml) or merge it into an existing
-  repositories.xml.
+  The pipeline content (.ktr/.kjb) lives under a separate `pipelines/`
+  tree, organised by scenario:
 
-  Create the base directory first, e.g. C:\PDI-Repo, then seed it with
-  the ready-made content shipped alongside this file:
+    pipelines/demo/hello_world.ktr        -> repo path /demo/hello_world
+    pipelines/CSCU/extract_transactions.ktr -> repo path /CSCU/extract_transactions
 
-    mkdir C:\PDI-Repo
-    xcopy /E /I C:\Projects\PDI-AirFlow\lab\carte\repository\* C:\PDI-Repo\
+  so <base_directory> below points at that `pipelines` folder.
 
-  That gives you /home/bi/hello_world (workshop Module 1) immediately.
+  `scripts/deploy.ps1` stages this under the install:
+    - content   -> C:\PDI-Airflow\pipelines\<scenario>\
+    - this file -> C:\PDI-Airflow\repositories\repositories.xml
+                   (base_directory rewritten to C:\PDI-Airflow\pipelines)
+  and `run-carte.ps1` syncs it into C:\PDI-Airflow\.kettle\ (what Carte
+  actually reads, via KETTLE_HOME) so your global ~/.kettle is untouched.
 -->
 <repositories>
   <repository>
     <id>KettleFileRepository</id>
     <name>Default</name>
     <description>Lab file repository</description>
-    <base_directory>C:\PDI-Repo</base_directory>
+    <base_directory>C:\PDI-Airflow\pipelines</base_directory>
     <read_only>N</read_only>
     <hides_hidden_files>N</hides_hidden_files>
   </repository>

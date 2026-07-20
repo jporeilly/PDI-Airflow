@@ -24,5 +24,5 @@ with DAG(
 
     nightly = CarteJobOperator(
         task_id='nightly_job',
-        job='/home/bi/nightly_job',
+        job='/demo/nightly_job',
         params={'date': '{{ ds }}'})

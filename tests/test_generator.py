@@ -36,9 +36,9 @@ class TestExplodeMode:
         assert "schedule='0 6 * * *'" in code
         # One task per TRANS/JOB entry
         assert "Extract_Sales = CarteTransOperator(" in code
-        assert "trans='/home/bi/extract_sales'" in code
+        assert "trans='/demo/extract_sales'" in code
         assert "Publish_Reports = CarteJobOperator(" in code
-        assert "job='/home/bi/reporting/publish_reports'" in code
+        assert "job='/demo/reporting/publish_reports'" in code
         # Hops became dependencies; control entries collapsed away
         assert 'Extract_Sales >> Load_Warehouse' in code
         assert 'Extract_Customers >> Load_Warehouse' in code
@@ -68,7 +68,7 @@ class TestWrapMode:
         result = convert(job_doc, ConvertOptions(mode='wrap'))
         code = result.code
         assert 'run_nightly_etl = CarteJobOperator(' in code
-        assert "job='/home/bi/nightly_etl'" in code
+        assert "job='/demo/nightly_etl'" in code
         assert 'CarteTransOperator' not in code
         ast.parse(code)
 

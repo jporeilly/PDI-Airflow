@@ -29,7 +29,7 @@ with DAG(
 
     stage_sales = CarteTransOperator(
         task_id='stage_sales',
-        trans='/home/bi/extract_sales',
+        trans='/demo/extract_sales',
         params={'date': '{{ ds }}'},
         outlets=[SALES_STAGING])
 
@@ -44,4 +44,4 @@ with DAG(
 
     build_marts = CarteJobOperator(
         task_id='build_marts',
-        job='/home/bi/build_marts')
+        job='/demo/build_marts')

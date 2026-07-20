@@ -38,9 +38,17 @@ if (-not (Test-Path $config)) { throw "carte-config.xml not found under $root." 
 
 # Self-contained repository: if this folder has its own .kettle (deployed
 # install), point KETTLE_HOME at it so the global ~/.kettle is untouched.
-if (Test-Path (Join-Path $root '.kettle\repositories.xml')) {
+# The authoritative definition lives in repositories\repositories.xml -
+# sync it into .kettle\ (what Carte reads) so editing one file is enough.
+$repoDef = Join-Path $root 'repositories\repositories.xml'
+$kettleDef = Join-Path $root '.kettle\repositories.xml'
+if (Test-Path $repoDef) {
+    New-Item -ItemType Directory -Force (Split-Path $kettleDef) | Out-Null
+    Copy-Item $repoDef $kettleDef -Force
+}
+if (Test-Path $kettleDef) {
     $env:KETTLE_HOME = $root
-    $repoNote = "$root\repositories (KETTLE_HOME=$root)"
+    $repoNote = "$root\pipelines (KETTLE_HOME=$root)"
 } else {
     $repoNote = "global ~/.kettle repository 'Default'"
 }

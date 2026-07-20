@@ -87,7 +87,7 @@ class TestEnrichedEvents:
         detail = parse_trans_detail(
             os.path.join(CSCU, 'extract_transactions.ktr'))
         events = build_pdc_trans_events(
-            detail, '/home/cscu/etl/extract_transactions',
+            detail, '/CSCU/extract_transactions',
             step_metrics=_metrics())
         complete = [e for e in events if e['eventType'] == 'COMPLETE'][0]
         out = complete['outputs'][0]
@@ -100,5 +100,5 @@ class TestEnrichedEvents:
             os.path.join(CSCU, 'extract_transactions.ktr'))
         bad = {'Read Transactions': {'input': 10, 'errors': 3}}
         events = build_pdc_trans_events(
-            detail, '/home/cscu/etl/extract_transactions', step_metrics=bad)
+            detail, '/CSCU/extract_transactions', step_metrics=bad)
         assert any(e['eventType'] == 'FAIL' for e in events)

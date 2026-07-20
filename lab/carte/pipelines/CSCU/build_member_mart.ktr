@@ -3,7 +3,7 @@
   <info>
     <name>build_member_mart</name>
     <description>Build the member 360 mart: each member with their branch, account rollups and recent transaction activity.</description>
-    <directory>/home/cscu/etl</directory>
+    <directory>/CSCU</directory>
     <parameters/>
   </info>
   <connection>

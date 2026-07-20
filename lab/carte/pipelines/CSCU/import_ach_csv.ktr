@@ -3,7 +3,7 @@
   <info>
     <name>import_ach_csv</name>
     <description>Load a daily ACH payments CSV export into the Copper State Credit Union mart staging area.</description>
-    <directory>/home/cscu/etl</directory>
+    <directory>/CSCU</directory>
     <parameters/>
   </info>
   <connection>

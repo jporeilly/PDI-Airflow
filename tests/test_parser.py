@@ -20,7 +20,7 @@ class TestParseJob:
     def test_job_metadata(self, doc):
         assert doc.kind == 'job'
         assert doc.name == 'nightly_etl'
-        assert doc.repo_path == '/home/bi/nightly_etl'
+        assert doc.repo_path == '/demo/nightly_etl'
         assert 'Nightly warehouse load' in doc.description
 
     def test_parameters(self, doc):
@@ -33,10 +33,10 @@ class TestParseJob:
         by_name = {e.name: e for e in doc.entries}
         assert by_name['Start'].is_start
         assert by_name['Extract Sales'].entry_type == 'TRANS'
-        assert by_name['Extract Sales'].path == '/home/bi/extract_sales'
+        assert by_name['Extract Sales'].path == '/demo/extract_sales'
         assert by_name['Publish Reports'].entry_type == 'JOB'
         assert by_name['Publish Reports'].path == \
-            '/home/bi/reporting/publish_reports'
+            '/demo/reporting/publish_reports'
         assert by_name['Mail Failure'].entry_type == 'MAIL'
         assert not by_name['Mail Failure'].is_executable
         assert len(doc.executable_entries) == 4

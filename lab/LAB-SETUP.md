@@ -45,7 +45,7 @@ Apache Airflow, with data lineage visible in Marquez:
 │                                                                  │
 │  PDI (Spoon + Carte :8081)      Docker Desktop                   │
 │  File repository "Default"   ┌─────────────────────────────────┐ │
-│  at C:\PDI-Repo              │ Airflow (3 services) :8088      │ │
+│  in pipelines\ (install)     │ Airflow (3 services) :8088      │ │
 │            ▲                 │   airflow-provider-pentaho      │ │
 │            │ Carte REST      │   openlineage provider          │ │
 │            └─────────────────│                                 │ │
@@ -80,23 +80,27 @@ Apache Airflow, with data lineage visible in Marquez:
    > .\install_license.bat install C:\path\to\your-license.lic
    > ```
 
-2. **Create the repository folder and seed it** with the ready-made
-   content so `/home/bi/hello_world` (Module 1) works immediately:
+2. **Seed the pipelines folder** with the ready-made content so
+   `/demo/hello_world` (Module 1) works immediately. The file-repository
+   content lives under `pipelines\<scenario>\`:
 
    ```powershell
-   mkdir C:\PDI-Repo
-   xcopy /E /I C:\Projects\PDI-AirFlow\lab\carte\repository\* C:\PDI-Repo\
+   mkdir C:\PDI-Airflow\pipelines
+   xcopy /E /I C:\Projects\PDI-AirFlow\lab\carte\pipelines\* C:\PDI-Airflow\pipelines\
    ```
 
-   You can add the other transformations/jobs (step 5) in Spoon as you
-   reach the modules that use them.
+   That gives you `/demo/hello_world` and the `/CSCU/*` capstone
+   pipelines. (Or just run `.\scripts\deploy.ps1`, which stages
+   `pipelines\`, `repositories\` and `.kettle\` for you.)
 
 3. **Register the repository**: copy
    [carte/repositories.xml](carte/repositories.xml) to
    `C:\Users\<you>\.kettle\repositories.xml` (create the `.kettle`
-   folder if needed). Adjust `base_directory` if you used a different
-   path. This defines a *file repository* named `Default` — no
-   database server required.
+   folder if needed). Its `base_directory` points at
+   `C:\PDI-Airflow\pipelines` — adjust if you used a different path. This
+   defines a *file repository* named `Default` — no database server
+   required. (The turnkey `run-carte.ps1` handles this via
+   `KETTLE_HOME`, leaving your global `~/.kettle` untouched.)
 
 4. **Connect Spoon to it**: start Spoon → Tools → Repository →
    Connect → `Default`. Any username/password works for a file
@@ -104,7 +108,7 @@ Apache Airflow, with data lineage visible in Marquez:
    connection).
 
 5. **Create the remaining workshop content** in the repository (folder
-   `/home/bi`). `hello_world` is already seeded by step 2; add these as
+   `/demo`). `hello_world` is already seeded by step 2; add these as
    you reach the modules that need them:
 
    - `extract_sales`, `extract_customers`, `load_warehouse`,
@@ -115,11 +119,11 @@ Apache Airflow, with data lineage visible in Marquez:
      transformation → Success. For `long_running_job` add a
      Wait For (e.g. 2 minutes) entry so deferrable mode is
      observable.
-   - `/home/bi/reporting/publish_reports` (job) and `build_marts`
+   - `/demo/reporting/publish_reports` (job) and `build_marts`
      (job): Start → Write To Log → Success.
 
-   Save each into the repository under `/home/bi` (File → Save; pick
-   the directory). On disk they appear under `C:\PDI-Repo\home\bi`.
+   Save each into the repository under `/demo` (File → Save; pick
+   the directory). On disk they appear under `C:\PDI-Airflow\pipelines\demo`.
 
 > **Shortcut — skip Parts 1 and 2 entirely:** the lab can run Carte in
 > Docker instead, pre-seeded with runnable repository content (cloned
@@ -359,7 +363,7 @@ OpenLineage transport URL `http://host.docker.internal:6001`.
 |---|---|
 | Airflow container restarts repeatedly | `docker compose logs airflow` — usually a pip failure in `_PIP_ADDITIONAL_REQUIREMENTS`; check the provider mount path. |
 | Carte task fails `ConnectionError` | Carte not running, wrong port, or firewall blocking Docker → host. Test `http://localhost:8081/kettle/status/` on the host first. |
-| `Unknown error` / `Unable to find job` from Carte | The repo path in the DAG doesn't exist in the `Default` repository — check spelling and the `/home/bi` folder. |
+| `Unknown error` / `Unable to find job` from Carte | The repo path in the DAG doesn't exist in the `Default` repository — check spelling and the `/demo` folder. |
 | Carte returns 401 | `carte_username`/`carte_password` in the connection extra don't match `pwd\kettle.pwd`. |
 | DAG not appearing | It only parses if the provider import works: `docker compose exec airflow airflow dags list-import-errors`. |
 | No lineage in Marquez | Check `docker compose logs airflow` for `openlineage` errors and that the transport URL uses `marquez-api:5000`. |

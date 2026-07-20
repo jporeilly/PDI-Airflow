@@ -25,7 +25,7 @@ with DAG(
     clean_input = PanOperator(
         task_id='clean_input',
         # queue='pdi',             # uncomment with dedicated PDI workers
-        directory='/home/bi',
+        directory='/demo',
         trans='clean_somedata',
         params={'file': '/tmp/input/{{ ds }}/sales.csv'})
 

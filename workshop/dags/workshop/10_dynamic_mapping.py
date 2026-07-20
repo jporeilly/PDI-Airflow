@@ -35,5 +35,5 @@ with DAG(
 
     load_region = CarteTransOperator.partial(
         task_id='load_region',
-        trans='/home/bi/load_sales',
+        trans='/demo/load_sales',
     ).expand(params=list_partitions())

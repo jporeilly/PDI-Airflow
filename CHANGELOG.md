@@ -1,5 +1,20 @@
 # Changelog
 
+## PDI-AirFlow v1.19.0 - 2026-07-20
+
+- **Repository layout: content and definition split.** The Carte file
+  repository now separates *content* from *definition*:
+  `pipelines\<scenario>\` holds the `.ktr`/`.kjb` (e.g. `pipelines\demo\`,
+  `pipelines\CSCU\`) and `repositoriesepositories.xml` is just the
+  definition (`base_directory` -> `C:\PDI-Airflow\pipelines`). Repo paths
+  changed accordingly: `/home/bi/*` -> `/demo/*`, `/home/cscu/etl/*` ->
+  `/CSCU/*`. `deploy.ps1` stages `pipelines\` + `repositories\` + `.kettle\`
+  (protected from the /MIR purge); `run-carte.ps1` syncs
+  `repositoriesepositories.xml` into `.kettle\` so one file is
+  authoritative and the global `~/.kettle` stays untouched. The old ad-hoc
+  `C:\PDI-Repo` is retired. Samples, generated DAGs, workshop DAGs,
+  tests, LAB-SETUP and the capstone updated. 45 tests pass.
+
 ## PDI-AirFlow v1.18.1 - 2026-07-20
 
 - **CSCU capstone DAGs moved under the mounted DAGs folder**

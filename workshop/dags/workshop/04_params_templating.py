@@ -29,7 +29,7 @@ with DAG(
 
     load_sales = CarteTransOperator(
         task_id='load_sales',
-        trans='/home/bi/load_sales',
+        trans='/demo/load_sales',
         params={
             # Airflow template macros become PDI named parameters
             'date': '{{ ds }}',

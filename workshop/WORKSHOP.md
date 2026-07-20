@@ -40,7 +40,7 @@ DAG: [dags/workshop/01_carte_trans_basic.py](dags/workshop/01_carte_trans_basic.
 3. Open `http://localhost:8081/kettle/status/` — the same execution is
    visible on the Carte side.
 
-**What to note**: `trans='/home/bi/hello_world'` is a *repository*
+**What to note**: `trans='/demo/hello_world'` is a *repository*
 path. The connection (`pdi_default`) carries everything else: host,
 port, repo name, Carte credentials.
 
@@ -222,7 +222,7 @@ Uses the migration app in this repo (see the root README).
    ```
 
 4. Watch `nightly_etl` run in the Graph view. (It needs the
-   `/home/bi` content from the lab; expect failures on any repo path
+   `/demo` content from the lab; expect failures on any repo path
    you didn't create — that's part of reviewing a migration.)
 
 5. Try your own: export any .kjb from your repository and run

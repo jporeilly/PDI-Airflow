@@ -50,7 +50,7 @@ with DAG(
 
     load = CarteTransOperator(
         task_id='load_with_soft_errors',
-        trans='/home/bi/load_warehouse',
+        trans='/demo/load_warehouse',
         params={'date': '{{ ds }}'},
         execution_timeout=timedelta(minutes=30))
 

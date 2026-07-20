@@ -3,7 +3,7 @@
   <info>
     <name>extract_transactions</name>
     <description>Extract recent posted transactions from the Copper State Credit Union core banking database into the mart staging area.</description>
-    <directory>/home/cscu/etl</directory>
+    <directory>/CSCU</directory>
     <parameters>
       <parameter><name>since_dt</name><default_value>2026-07-01</default_value></parameter>
     </parameters>

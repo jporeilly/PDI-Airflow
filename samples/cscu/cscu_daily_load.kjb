@@ -2,7 +2,7 @@
 <job>
   <name>cscu_daily_load</name>
   <description>Copper State Credit Union nightly load: extract posted transactions to staging, then rebuild the member 360 mart. Emails on failure.</description>
-  <directory>/home/cscu/etl</directory>
+  <directory>/CSCU</directory>
   <parameters>
     <parameter><name>since_dt</name><default_value>2026-07-01</default_value></parameter>
   </parameters>
@@ -12,13 +12,13 @@
       <name>Extract Transactions</name>
       <type>TRANS</type>
       <transname>extract_transactions</transname>
-      <directory>/home/cscu/etl</directory>
+      <directory>/CSCU</directory>
     </entry>
     <entry>
       <name>Build Member Mart</name>
       <type>TRANS</type>
       <transname>build_member_mart</transname>
-      <directory>/home/cscu/etl</directory>
+      <directory>/CSCU</directory>
     </entry>
     <entry><name>Mail Failure</name><type>MAIL</type></entry>
     <entry><name>Success</name><type>SUCCESS</type></entry>

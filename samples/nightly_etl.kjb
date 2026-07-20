@@ -2,7 +2,7 @@
 <job>
   <name>nightly_etl</name>
   <description>Nightly warehouse load: extract, load, publish.</description>
-  <directory>/home/bi</directory>
+  <directory>/demo</directory>
   <parameters>
     <parameter>
       <name>date</name>
@@ -28,7 +28,7 @@
       <specification_method>rep_name</specification_method>
       <filename/>
       <transname>extract_sales</transname>
-      <directory>/home/bi</directory>
+      <directory>/demo</directory>
     </entry>
     <entry>
       <name>Extract Customers</name>
@@ -36,7 +36,7 @@
       <specification_method>rep_name</specification_method>
       <filename/>
       <transname>extract_customers</transname>
-      <directory>/home/bi</directory>
+      <directory>/demo</directory>
     </entry>
     <entry>
       <name>Load Warehouse</name>
@@ -44,7 +44,7 @@
       <specification_method>rep_name</specification_method>
       <filename/>
       <transname>load_warehouse</transname>
-      <directory>/home/bi</directory>
+      <directory>/demo</directory>
     </entry>
     <entry>
       <name>Publish Reports</name>
@@ -52,7 +52,7 @@
       <specification_method>rep_name</specification_method>
       <filename/>
       <jobname>publish_reports</jobname>
-      <directory>/home/bi/reporting</directory>
+      <directory>/demo/reporting</directory>
     </entry>
     <entry>
       <name>Mail Failure</name>

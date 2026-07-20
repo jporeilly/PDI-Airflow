@@ -27,22 +27,22 @@ with DAG(
 
     extract_sales = CarteTransOperator(
         task_id='extract_sales',
-        trans='/home/bi/extract_sales',
+        trans='/demo/extract_sales',
         params={'date': '{{ ds }}'})
 
     extract_customers = CarteTransOperator(
         task_id='extract_customers',
-        trans='/home/bi/extract_customers',
+        trans='/demo/extract_customers',
         params={'date': '{{ ds }}'})
 
     load_warehouse = CarteTransOperator(
         task_id='load_warehouse',
-        trans='/home/bi/load_warehouse',
+        trans='/demo/load_warehouse',
         params={'date': '{{ ds }}'})
 
     publish_reports = CarteJobOperator(
         task_id='publish_reports',
-        job='/home/bi/reporting/publish_reports',
+        job='/demo/reporting/publish_reports',
         params={'date': '{{ ds }}'})
 
     # PDI failure-hop equivalent: runs only if an upstream task failed

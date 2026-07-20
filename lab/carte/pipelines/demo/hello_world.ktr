@@ -3,7 +3,7 @@
   <info>
     <name>hello_world</name>
     <description>Lab smoke test: generate one row and write it to the log.</description>
-    <directory>/home/bi</directory>
+    <directory>/demo</directory>
     <trans_type>Normal</trans_type>
     <size_rowset>10000</size_rowset>
   </info>

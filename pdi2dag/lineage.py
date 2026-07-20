@@ -251,7 +251,7 @@ def build_trans_model_events(detail, namespace='pdi', prefix=None,
 #               HostnameResolver) for repository jobs; file:// URI for
 #               file-based ones. This becomes the "PDI Server" node.
 #   job name  = the repository path with a leading '/' (getPathAndName
-#               + prependIfMissing '/'), e.g. /home/bi/nightly_etl -
+#               + prependIfMissing '/'), e.g. /demo/nightly_etl -
 #               path segments become the tree's Folders.
 #   jobType facet: processingType=BATCH, integration=PDI,
 #               jobType='job'|'transformation' (lowercase)
@@ -428,7 +428,7 @@ def build_pdc_etl_events(doc, trans_details=None, namespace=None,
     events = []
 
     job_run_id = str(uuid.uuid4())
-    job_name = doc.repo_path            # e.g. /home/bi/nightly_etl
+    job_name = doc.repo_path            # e.g. /demo/nightly_etl
 
     # Parent/root run facet shared by every child (transformation) run.
     parent_run_facet = {

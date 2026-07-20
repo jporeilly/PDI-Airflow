@@ -2,7 +2,7 @@
 """Module 1: run a single PDI transformation on Carte.
 
 Requires the `pdi_default` connection and a transformation saved at
-/home/bi/hello_world in the PDI repository (see LAB-SETUP.md).
+/demo/hello_world in the PDI repository (see LAB-SETUP.md).
 """
 
 import pendulum
@@ -21,4 +21,4 @@ with DAG(
 
     hello = CarteTransOperator(
         task_id='hello_world',
-        trans='/home/bi/hello_world')
+        trans='/demo/hello_world')

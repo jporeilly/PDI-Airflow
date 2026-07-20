@@ -24,7 +24,7 @@ with DAG(
 
     long_running = CarteJobOperator(
         task_id='long_running_job',
-        job='/home/bi/long_running_job',
+        job='/demo/long_running_job',
         params={'date': '{{ ds }}'},
         deferrable=True,
         poll_interval=15)

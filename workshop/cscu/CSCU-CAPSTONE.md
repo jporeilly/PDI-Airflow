@@ -14,7 +14,7 @@ traced from source tables through the mart.
 ## The pipeline
 
 `samples/cscu/` (also staged in the Carte repository at
-`/home/cscu/etl/`):
+`/CSCU/`):
 
 | PDI file | Does |
 |---|---|
@@ -69,7 +69,7 @@ core tables into the mart.
 
 *(needs `cscu_core` loaded + Carte with the DB connections)*
 
-1. Start Carte: `.\run-carte.ps1` (serves `/home/cscu/etl/*` from the
+1. Start Carte: `.\run-carte.ps1` (serves `/CSCU/*` from the
    file repository).
 2. Unpause `cscu_daily_load` in Airflow and **Trigger**.
 3. Watch the Graph view: `Extract_Transactions` runs on Carte (reads
