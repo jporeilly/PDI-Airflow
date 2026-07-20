@@ -16,6 +16,20 @@ Run the Airflow 3.3 + Marquez lab in **native Docker on Ubuntu 24.04**
 - The Studio (on Windows) reaches Airflow / Marquez / PDC **on the VM**
   → point its Settings at `192.168.1.200`.
 
+## Quick start (one command)
+
+On the Ubuntu VM, after cloning the repo:
+
+```bash
+git clone https://github.com/jporeilly/PDI-Airflow.git
+cd PDI-Airflow
+CARTE_HOST=192.168.1.100 ./lab/install-ubuntu.sh
+```
+
+That installs Docker Engine if missing, writes `lab/docker/.env`,
+opens the firewall, and brings the Airflow 3.3 + Marquez stack up. The
+manual steps below explain each part.
+
 ## 1. Install Docker Engine on Ubuntu 24.04
 
 ```bash
