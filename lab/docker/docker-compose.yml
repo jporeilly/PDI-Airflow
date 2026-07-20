@@ -39,12 +39,14 @@ x-airflow-common: &airflow-common
     AIRFLOW__API__EXPOSE_CONFIG: 'true'
     AIRFLOW__OPENLINEAGE__TRANSPORT: '{"type":"http","url":"http://marquez-api:5000","endpoint":"api/v1/lineage"}'
     AIRFLOW__OPENLINEAGE__NAMESPACE: pdi
-    # Run each task in a fresh Python interpreter instead of forking the
-    # (multi-threaded) parent. On Python 3.12+/3.13 the OpenLineage
-    # listener's START-event emission deadlocks in a forked child, so
-    # scheduler-triggered tasks hang and get SIGKILLed (apache/airflow
-    # #47160). Spawning a new interpreter avoids the fork entirely.
-    AIRFLOW__CORE__EXECUTE_TASKS_NEW_PYTHON_INTERPRETER: 'true'
+    # Airflow 3 task workers (Task SDK) reach the *execution API* on the
+    # api-server. With separate scheduler/api-server containers the
+    # default `localhost:8080` resolves to the scheduler's own container —
+    # no api-server there — so every scheduler-triggered task fails with
+    # `httpx.ConnectError: Connection refused` and is SIGKILLed at ~8s
+    # (while `airflow tasks test`, which runs standalone, works). Point it
+    # at the api-server service name.
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
     # Carte/PDI runs on a different machine (Windows 11) — set CARTE_HOST
     # to its LAN IP in .env. Defaults to host.docker.internal for a
     # local Docker Desktop test where Carte is on the Docker host.

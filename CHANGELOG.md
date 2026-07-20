@@ -1,5 +1,21 @@
 # Changelog
 
+## PDI-AirFlow v1.15.5 - 2026-07-20
+
+- **Real fix for scheduler-triggered tasks being SIGKILLed on the
+  Airflow 3.3 VM** (supersedes the v1.15.1 misdiagnosis). The cause was
+  **not** the OpenLineage fork deadlock — `execute_tasks_new_python_interpreter`
+  is a no-op in Airflow 3's Task-SDK model. With separate
+  `airflow-scheduler` / `airflow-apiserver` containers, the LocalExecutor
+  task workers reach the **execution API** at the default `localhost:8080`,
+  which inside the scheduler container has no api-server — so every task
+  fails with `httpx.ConnectError: Connection refused` and is reaped at
+  ~8s (while `airflow tasks test`, running standalone, works). Fixed by
+  `AIRFLOW__CORE__EXECUTION_API_SERVER_URL=http://airflow-apiserver:8080/execution/`
+  in `docker-compose.yml`; the earlier `EXECUTE_TASKS_NEW_PYTHON_INTERPRETER`
+  setting was removed. Redeploy the VM (`git pull && docker compose up -d`)
+  to apply. Troubleshooting row updated.
+
 ## PDI-AirFlow v1.15.4 - 2026-07-20
 
 - **Self-contained Carte setup in the deployed install.**
