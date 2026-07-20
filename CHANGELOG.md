@@ -1,8 +1,53 @@
 # Changelog
 
-## PDI-AirFlow v2.1.0 - 2026-07-20
+## PDI-AirFlow v1.12.0 - 2026-07-20
 
-- **Two documented deployment options** (LAB-SETUP.md + INSTALL.md):
+Migrates the lab to **Apache Airflow 3.3** (run in Linux Docker; the
+Windows machine only connects over REST) and fixes the Studio's Airflow
+status probe against it. Studio webapp → 1.12.0.
+
+**Fixes**
+
+- **Studio showed "Airflow offline" against Airflow 3.3.** The
+  `/api/airflow/status` sidebar/Settings probe hard-coded a
+  `GET /api/v1/dags` basic-auth request, which **404s on Airflow 3.3**
+  (v1 REST API removed) and read as offline — even though deploy
+  already used the auto-detecting client. The probe now goes through
+  `AirflowClient`: **v2 + JWT** on Airflow 3.x, **v1 + basic auth** on
+  2.x. Verified against the VM (192.168.1.200:8088): `api=v2`, DAGs
+  listed, sidebar reads *connected*. The response also reports the
+  detected `api` version.
+
+**Studio**
+
+- **Test Marquez connection** button + `/api/marquez/status`
+  (namespace-count probe), matching the Airflow/PDC test buttons.
+- **Browse… button** on Settings → Deployment *Dags folder*: opens the
+  OS folder picker on the machine running the Studio (`/api/browse/folder`)
+  and fills in the absolute path.
+
+**Airflow 3.3 migration**
+
+- **Lab → Airflow 3.3**: image rebuilt on `apache/airflow:3.3.0` with
+  the Pentaho + OpenLineage + standard + FAB providers baked in;
+  compose runs `api-server` / `scheduler` / `triggerer` /
+  `dag-processor` as separate `restart: unless-stopped` services with
+  FAB auth (admin/admin) and JWT. Validated: health 200, JWT
+  `/auth/token`, DAGs load with 0 import errors.
+- **pdi2dag REST client** auto-detects **API v2 + JWT** (Airflow 3) and
+  falls back to **v1 basic auth** (Airflow 2). Deploy/unpause/trigger/
+  status work on both.
+- **Provider** already used `airflow.sdk` (3.x) with a 2.x fallback —
+  confirmed on 3.3 in the Linux container. `airflow.sdk` can't import
+  on **native Windows** (Airflow's `os.register_at_fork` is POSIX-only),
+  so provider unit tests run on Linux or against Airflow 2.10.5 locally.
+- **Workshop DAGs** made dual-compatible (2.x + 3.x): `BashOperator`/
+  `BranchPythonOperator` (providers.standard), `Dataset`→`Asset`,
+  `airflow.decorators.task`→`airflow.sdk.task`.
+
+**Deployment**
+
+- **Two documented options** (LAB-SETUP.md + INSTALL.md):
   - **A — Windows 11 / Airflow 2.10.5** via Docker Desktop
     (`docker-compose.win.yml` + `airflow2/Dockerfile`), REST API v1,
     DAGs in `C:\PDI-Airflow\DAGS`.
@@ -11,41 +56,16 @@
     auto-detects v1 vs v2, so one Studio drives either.
 - **Configurable DAGs folder**: `DAGS_DIR` in `lab/docker/.env`
   (default `../../workshop/dags`; Windows deploy uses
-  `C:\PDI-Airflow\DAGS`). `scripts/deploy.ps1` now creates the DAGS
-  folder and seeds it with the workshop DAGs.
+  `C:\PDI-Airflow\DAGS`). `scripts/deploy.ps1` creates the DAGS folder,
+  seeds it with the workshop DAGs, and copies a runnable Studio to
+  `C:\PDI-Airflow` (UI built, no venv/node_modules).
+- **Ubuntu 24.04 target**: `lab/UBUNTU-SETUP.md` + `lab/docker/
+  .env.example`; Carte connection parameterised (`CARTE_HOST` etc.) so
+  Airflow on the VM reaches Carte on the Windows machine.
 - GitHub: https://github.com/jporeilly/PDI-Airflow (private).
 
-## PDI-AirFlow v2.0.0 - 2026-07-20
-
-**Migrated to Apache Airflow 3.3** (the lab runs it in Linux Docker;
-Windows never runs Airflow).
-
-- **Lab → Airflow 3.3**: image rebuilt on `apache/airflow:3.3.0` with
-  the Pentaho + OpenLineage + standard + FAB providers baked in;
-  compose runs `api-server` / `scheduler` / `triggerer` /
-  `dag-processor` as separate `restart: unless-stopped` services with
-  FAB auth (admin/admin) and JWT. Validated: health 200, JWT
-  `/auth/token`, **13 DAGs load with 0 import errors**, provider DAGs
-  included.
-- **pdi2dag REST client** auto-detects **API v2 + JWT** (Airflow 3) and
-  falls back to **v1 basic auth** (Airflow 2). Deploy/unpause/trigger/
-  status work on both.
-- **Provider** already used `airflow.sdk` (3.x) with a 2.x fallback —
-  confirmed working on 3.3 in the Linux container. Note:
-  `airflow.sdk` can't import on **native Windows** (Airflow's
-  `os.register_at_fork` is POSIX-only), so provider unit tests run on
-  Linux (the lab) or against Airflow 2.10.5 locally.
-- **Workshop DAGs** made dual-compatible (2.x + 3.x): `BashOperator`/
-  `BranchPythonOperator` (providers.standard), `Dataset`→`Asset`,
-  `airflow.decorators.task`→`airflow.sdk.task`.
-- **Ubuntu 24.04 target**: `lab/UBUNTU-SETUP.md` + `lab/docker/
-  .env.example`. Carte connection parameterised (`CARTE_HOST` etc.) so
-  Airflow on the Ubuntu VM reaches Carte on the Windows machine.
-- **Deploy**: `scripts/deploy.ps1` + `make deploy` copy a runnable
-  Studio to `C:\PDI-Airflow` (UI built, no venv/node_modules).
-
-Breaking: the lab now requires Airflow 3.3; `pdi_default` connection on
-the lab uses `.env` (`cp .env.example .env`).
+Note: the lab now targets Airflow 3.3 (option B); `pdi_default` uses
+`.env` (`cp .env.example .env`).
 
 ## PDI-AirFlow v1.11.0 - 2026-07-19
 

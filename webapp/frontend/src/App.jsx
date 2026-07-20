@@ -101,6 +101,7 @@ export default function App() {
   const [page, setPage] = useState('home')
   const [version, setVersion] = useState('')
   const [airflow, setAirflow] = useState(null)
+  const [marquez, setMarquez] = useState(null)
   const [pdc, setPdc] = useState(null)
   const ws = useStudio()
 
@@ -116,6 +117,9 @@ export default function App() {
       apiGet('/api/airflow/status')
         .then((s) => { if (!stop) setAirflow(s) })
         .catch(() => { if (!stop) setAirflow(null) })
+      apiGet('/api/marquez/status')
+        .then((s) => { if (!stop) setMarquez(s) })
+        .catch(() => { if (!stop) setMarquez(null) })
       apiGet('/api/pdc/status')
         .then((s) => { if (!stop) setPdc(s) })
         .catch(() => { if (!stop) setPdc(null) })
@@ -171,6 +175,12 @@ export default function App() {
             {airflow?.reachable
               ? <>Airflow · <a href={airflow.url} target="_blank" rel="noreferrer">connected</a></>
               : 'Airflow · offline'}
+          </div>
+          <div className="conn">
+            <span className={`dot ${marquez?.reachable ? 'ok' : 'warn'}`} />
+            {marquez?.reachable
+              ? <>Marquez · <a href={marquez.web_url} target="_blank" rel="noreferrer">connected</a></>
+              : 'Marquez · offline'}
           </div>
           <div className="conn">
             <span className={`dot ${pdc?.reachable ? (pdc?.authenticated ? 'ok' : 'warn') : 'warn'}`} />

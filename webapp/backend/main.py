@@ -208,6 +208,37 @@ def version():
     return {'version': __version__}
 
 
+@app.get('/api/browse/folder', tags=['services'],
+         summary='Open a native folder picker (Studio runs locally)')
+def browse_folder():
+    """Pops the OS folder-chooser on the machine running the backend and
+    returns the chosen absolute path. Only meaningful when the Studio is
+    run locally (the dialog appears on the server host); returns an
+    error on a headless host. Runs the dialog in a fresh subprocess so
+    Tkinter never touches FastAPI's worker threads."""
+    import subprocess
+    import sys
+    code = (
+        "import tkinter as tk\n"
+        "from tkinter import filedialog\n"
+        "r = tk.Tk(); r.withdraw(); r.attributes('-topmost', True)\n"
+        "p = filedialog.askdirectory(title='Select the DAGs folder')\n"
+        "r.destroy()\n"
+        "print(p or '')\n"
+    )
+    try:
+        out = subprocess.run(
+            [sys.executable, '-c', code],
+            capture_output=True, text=True, timeout=180)
+    except Exception as e:  # noqa: BLE001 - local convenience only
+        return _err('Folder picker unavailable: {}'.format(e))
+    if out.returncode != 0:
+        return _err('Folder picker unavailable on this host '
+                    '(no desktop session?).')
+    lines = [ln for ln in (out.stdout or '').splitlines() if ln.strip()]
+    return {'path': lines[-1].strip() if lines else ''}
+
+
 # --------------------------------------------------------- pdi routes
 
 def _parse_content(filename, content):
@@ -465,16 +496,22 @@ def pdi_graph(body: GraphRequest):
 def airflow_status():
     settings = load_settings()
     url = settings['airflow_url']
+    reachable, total, api = False, None, None
     try:
-        rs = requests.get(
-            '{}/api/v1/dags?limit=1'.format(url),
-            auth=(settings['airflow_user'], settings['airflow_password']),
-            timeout=5)
-        reachable = rs.status_code == 200
-        total = rs.json().get('total_entries') if reachable else None
-    except requests.RequestException:
+        # AirflowClient auto-detects the REST API version — v2 + JWT on
+        # Airflow 3.x, v1 + basic auth on 2.x. A hard-coded /api/v1 probe
+        # 404s on Airflow 3.3, which read as "offline".
+        client = AirflowClient(
+            url, settings['airflow_user'], settings['airflow_password'],
+            timeout=6)
+        data = client._request('GET', '/dags?limit=1')
+        reachable = True
+        api = client._api
+        total = (data or {}).get('total_entries')
+    except Exception:
         reachable, total = False, None
-    return {'reachable': reachable, 'url': url, 'dag_count': total}
+    return {'reachable': reachable, 'url': url, 'dag_count': total,
+            'api': api}
 
 
 def _pdi_level(job):
@@ -517,6 +554,27 @@ def pdc_status():
                 authenticated = False
     return {'reachable': reachable, 'authenticated': authenticated,
             'url': url}
+
+
+@app.get('/api/marquez/status', tags=['services'],
+         summary='Marquez reachability and namespace count')
+def marquez_status():
+    settings = load_settings()
+    url = settings.get('marquez_url') or ''
+    reachable, count = False, None
+    if url:
+        try:
+            rs = requests.get(
+                url.rstrip('/') + '/api/v1/namespaces?limit=1',
+                timeout=5)
+            reachable = rs.status_code < 400
+            if reachable and rs.content:
+                count = len(rs.json().get('namespaces', []))
+        except requests.RequestException:
+            reachable, count = False, None
+    return {'reachable': reachable, 'url': url,
+            'web_url': settings.get('marquez_web_url') or url,
+            'namespace_count': count}
 
 
 @app.get('/api/marquez/jobs', tags=['lineage'],
