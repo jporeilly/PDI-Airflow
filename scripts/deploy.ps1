@@ -46,8 +46,35 @@ $target = Join-Path $dags 'deploy-target'
 New-Item -ItemType Directory -Force $target | Out-Null
 Copy-Item (Join-Path $Dest 'workshop\dags\*') $dags -Recurse -Force -ErrorAction SilentlyContinue
 
+# Carte lab artifacts, consolidated under $Dest so the install is
+# self-contained:
+#   $Dest\carte\carte-config.xml   - the Carte slave config
+#   $Dest\repositories\            - the file-repository base_directory
+#                                    (home\bi\hello_world.ktr) + a copy
+#                                    of repositories.xml
+#   $Dest\.kettle\repositories.xml - what Carte actually reads, via
+#                                    KETTLE_HOME=$Dest (run-carte.ps1),
+#                                    so your global ~/.kettle is untouched
+$carteDir  = Join-Path $Dest 'carte'
+$repoDir   = Join-Path $Dest 'repositories'
+$kettleDir = Join-Path $Dest '.kettle'
+New-Item -ItemType Directory -Force $carteDir, $repoDir, $kettleDir | Out-Null
+
+Copy-Item (Join-Path $src 'lab\carte\carte-config.xml') $carteDir -Force
+Copy-Item (Join-Path $src 'lab\carte\repository\*') $repoDir -Recurse -Force
+
+# repositories.xml with base_directory pointed at the deployed repo dir;
+# written both under repositories\ and under .kettle\ (Carte reads the
+# latter via KETTLE_HOME).
+$reposXml = (Get-Content (Join-Path $src 'lab\carte\repositories.xml') -Raw) `
+    -replace '<base_directory>[^<]*</base_directory>', "<base_directory>$repoDir</base_directory>"
+Set-Content -LiteralPath (Join-Path $repoDir 'repositories.xml')  -Value $reposXml -Encoding utf8
+Set-Content -LiteralPath (Join-Path $kettleDir 'repositories.xml') -Value $reposXml -Encoding utf8
+
 Write-Host ""
 Write-Host "  Deployed to $Dest  (DAGs folder: $dags)" -ForegroundColor Green
 Write-Host "  Run the Studio:   cd $Dest ; .\run.ps1 -NoBuild"
+Write-Host "  Start Carte:      cd $Dest ; .\run-carte.ps1"
+Write-Host "                    (config: $carteDir\carte-config.xml, repo: $repoDir)"
 Write-Host "  Windows lab:      cd $Dest\lab\docker ; docker compose -f docker-compose.win.yml up -d --build"
 Write-Host "  In the Studio Settings, set DAGs folder = $target"

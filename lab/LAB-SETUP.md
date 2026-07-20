@@ -136,6 +136,21 @@ Apache Airflow, with data lineage visible in Marquez:
 
 ## Part 2 — Carte (host install)
 
+> **Turnkey (deployed install):** `scripts\deploy.ps1` stages a
+> self-contained Carte setup under `C:\PDI-Airflow` —
+> `carte\carte-config.xml`, the file repository at `repositories\`
+> (seeded with `hello_world`), and a `.kettle\repositories.xml`. Start
+> it with one command, which sets `KETTLE_HOME` to that folder so your
+> global `~/.kettle` is untouched:
+>
+> ```powershell
+> cd C:\PDI-Airflow
+> .\run-carte.ps1        # add -PdiHome <path> if PDI isn't auto-found
+> ```
+>
+> The manual steps below are for running Carte straight from the source
+> repo.
+
 1. **Configuration**: use
    [carte/carte-config.xml](carte/carte-config.xml) (master on port
    8081, binds 0.0.0.0).

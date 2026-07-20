@@ -1,5 +1,21 @@
 # Changelog
 
+## PDI-AirFlow v1.15.4 - 2026-07-20
+
+- **Self-contained Carte setup in the deployed install.**
+  `scripts/deploy.ps1` now stages the Carte artifacts under the install
+  root (`C:\PDI-Airflow`): `carte\carte-config.xml`, the file-repository
+  `repositories\` (seeded with `home\bi\hello_world.ktr` + a copy of
+  `repositories.xml`), and `.kettle\repositories.xml` — all with
+  `base_directory` rewritten to `<Dest>\repositories`.
+- **`run-carte.ps1`** (new, at the repo root) launches Carte against
+  that config, auto-locating PDI and setting `KETTLE_HOME` to the
+  install folder so Carte reads its own `.kettle` and **never touches
+  your global `~/.kettle`** (which would otherwise wipe existing Pentaho
+  repository definitions). Falls back to `lab\carte\` + the global
+  `.kettle` when run from the source repo. LAB-SETUP documents the
+  turnkey path.
+
 ## PDI-AirFlow v1.15.3 - 2026-07-20
 
 - **Fix: "Open the graph in Marquez" ignored the Settings override.**
