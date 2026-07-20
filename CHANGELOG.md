@@ -1,5 +1,25 @@
 # Changelog
 
+## PDI-AirFlow v1.14.0 - 2026-07-20
+
+- **Carte connection picker on Configure.** The *Carte connection*
+  field (which sets the generated DAG's `pdi_conn_id`) is now a picker
+  backed by `/api/airflow/connections` — it lists the `pentaho`-type
+  connections defined in Airflow so you can target a specific Carte
+  server or cluster master per DAG (dev single vs prod cluster). You can
+  still type a name that will exist at deploy time. Because Airflow's
+  REST API only enumerates metadata-DB connections, env-var connections
+  like the lab's `AIRFLOW_CONN_PDI_DEFAULT` don't list — so `pdi_default`
+  is always offered as a fallback, and the field note explains the
+  distinction. Underlying support (`pdi2dag --conn-id`, generator
+  `pdi_conn_id`, per-operator `pdi_conn_id`) was already there; this
+  surfaces it in the UI.
+  - **Carte topologies:** a single Carte on a custom port is just the
+    connection's port; a cluster points the connection at the *master*
+    (the `.ktr` carries the cluster schema — Airflow submits to the
+    master and polls it); multiple named connections let each DAG pick
+    its Carte via `pdi_conn_id`.
+
 ## PDI-AirFlow v1.13.0 - 2026-07-20
 
 - **Workshop DAGs split into three folders** under `workshop/dags/`

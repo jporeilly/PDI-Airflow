@@ -139,6 +139,7 @@ button.ghost:disabled { opacity: .55; cursor: not-allowed; }
 }
 .form-grid select:focus, .form-grid input:focus, .field input:focus, .field select:focus,
 input.text:focus, select.text:focus, textarea.text:focus { outline: 2px solid var(--accent); }
+.field-note { font-size: .72rem; color: var(--text-muted); font-weight: 400; }
 .field-row { display: flex; gap: .5rem; align-items: stretch; }
 .field-row input { flex: 1; min-width: 0; }
 .field-row button { white-space: nowrap; }

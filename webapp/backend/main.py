@@ -522,6 +522,45 @@ def airflow_status():
             'api': api}
 
 
+@app.get('/api/airflow/connections', tags=['services'],
+         summary='Carte (pentaho-type) connections defined in Airflow')
+def airflow_connections():
+    """Lists the Airflow connections of type ``pentaho`` — the Carte
+    servers/clusters a generated DAG can target via ``pdi_conn_id``.
+    Powers the connection picker on the Configure page. Returns an empty
+    list (not an error) when Airflow is unreachable so the picker
+    degrades to free text."""
+    settings = load_settings()
+    url = settings['airflow_url']
+    conns = []
+    try:
+        client = AirflowClient(
+            url, settings['airflow_user'], settings['airflow_password'],
+            timeout=6)
+        data = client._request('GET', '/connections?limit=200')
+        for c in (data or {}).get('connections', []):
+            if c.get('conn_type') != 'pentaho':
+                continue
+            cid = c.get('connection_id') or c.get('conn_id')
+            if not cid:
+                continue
+            conns.append({
+                'conn_id': cid,
+                'host': c.get('host'),
+                'port': c.get('port'),
+                'source': 'db',
+            })
+    except Exception:  # noqa: BLE001 - picker falls back to free text
+        conns = []
+    # The REST API only lists metadata-DB connections; env-var ones like
+    # the lab's AIRFLOW_CONN_PDI_DEFAULT don't appear. pdi_default is the
+    # provider's default and always works, so always offer it.
+    if not any(c['conn_id'] == 'pdi_default' for c in conns):
+        conns.insert(0, {'conn_id': 'pdi_default', 'host': None,
+                         'port': None, 'source': 'env'})
+    return {'connections': conns}
+
+
 def _pdi_level(job):
     """Human label from the OpenLineage jobType facet: STEP for
     transformation steps, TRANS/JOB for PDI entries, DAG/TASK for

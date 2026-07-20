@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { apiPost } from './../api.js'
+import { useEffect, useState } from 'react'
+import { apiGet, apiPost } from './../api.js'
 import {
   rootFiles, setOptions, setParam, setResults, useStudio,
 } from './../state.js'
@@ -18,8 +18,15 @@ export default function ConfigurePage({ onNavigate }) {
   const ws = useStudio()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [conns, setConns] = useState(null)   // pentaho connections in Airflow
   const o = ws.options
   const roots = rootFiles(ws.files)
+
+  useEffect(() => {
+    apiGet('/api/airflow/connections')
+      .then((r) => setConns(r.connections || []))
+      .catch(() => setConns([]))
+  }, [])
 
   if (roots.length === 0) {
     return (
@@ -97,9 +104,23 @@ export default function ConfigurePage({ onNavigate }) {
               <option value="wrap">wrap — single Carte task</option>
             </select>
           </label>
-          <label>Connection id
-            <input className="text" value={o.conn_id}
+          <label>Carte connection
+            <input className="text" list="pdi-conns" value={o.conn_id}
+              placeholder="pdi_default"
               onChange={(e) => setOptions({ conn_id: e.target.value })} />
+            <datalist id="pdi-conns">
+              {(conns || []).map((c) => (
+                <option key={c.conn_id} value={c.conn_id}>
+                  {c.host ? `${c.host}${c.port ? ':' + c.port : ''}`
+                    : c.source === 'env' ? 'env-var default' : ''}
+                </option>
+              ))}
+            </datalist>
+            <span className="field-note">
+              {conns === null ? 'Loading Airflow connections…'
+                : `${conns.length} Carte connection${conns.length > 1 ? 's' : ''} — pick one or type a name. `
+                  + 'DB connections list here; env-var ones (like the lab’s pdi_default) work but don’t enumerate.'}
+            </span>
           </label>
           <label>Log level
             <select value={o.level} onChange={(e) => setOptions({ level: e.target.value })}>
