@@ -1,5 +1,31 @@
 # Changelog
 
+## PDI-AirFlow v1.17.0 - 2026-07-20
+
+Production-hardening pass (part 1 of 4 requested: installer + CI +
+secrets + service; this ships the **installer, service and CI**).
+
+- **One-script installer** `install.ps1`: prereq checks (64-bit Python
+  3.10-3.12, Node, Docker) -> venv + `pdi2dag`/provider -> build the UI
+  -> deploy a **self-contained** copy to `C:\PDI-Airflow` (its own venv,
+  so it runs with **no Node**). `-Service` also registers auto-start.
+  `uninstall.ps1` (with `-KeepData`) reverses it.
+- **Auto-start service** `scripts/install-service.ps1`: registers the
+  Studio as a scheduled task (starts at logon, restarts on failure) via
+  the deployed venv + `run.ps1 -NoBuild` - fixes the "console dies"
+  flakiness for unattended running.
+- **CI** (GitHub Actions): pdi2dag tests (py 3.10/3.12), provider tests,
+  UI build, and a `scripts/check_versions.py` consistency gate. README
+  gains a CI badge.
+- **`run.ps1 -NoBuild`** no longer needs Node - serves the shipped
+  `dist` directly (errors clearly if no build is present).
+- **Non-destructive re-deploy**: `deploy.ps1` now protects the install
+  venv and user data (`DAGs\`, `repositories\`, `.kettle\`) from the
+  `/MIR` purge, so re-installing refreshes code without wiping
+  deployments.
+- All `.ps1` files sanitised to ASCII (em-dashes broke parsing under
+  Windows PowerShell 5.1). Launchers parse-checked.
+
 ## PDI-AirFlow v1.16.0 - 2026-07-20
 
 - **Local Carte cluster** (workshop capstone, Phase B). New

@@ -1,8 +1,12 @@
 # PDI-AirFlow
 
+[![CI](https://github.com/jporeilly/PDI-Airflow/actions/workflows/ci.yml/badge.svg)](https://github.com/jporeilly/PDI-Airflow/actions/workflows/ci.yml)
+
 Everything for running and migrating **Pentaho Data Integration**
 workloads on **Apache Airflow / Astronomer**, with lineage in
 **Marquez**.
+
+Install on Windows in one step: `.\install.ps1` (see [INSTALL.md](INSTALL.md)).
 
 | Part | What | Where |
 |---|---|---|

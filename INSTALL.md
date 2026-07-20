@@ -1,6 +1,31 @@
 # Installation
 
-## One-stop (recommended)
+## One script (Windows, recommended)
+
+```powershell
+.\install.ps1            # prereqs -> venv -> build UI -> deploy to C:\PDI-Airflow
+.\install.ps1 -Service   # ... and auto-start the Studio at logon
+```
+
+`install.ps1` is the turnkey installer: it checks prerequisites (64-bit
+Python 3.10-3.12, Node, Docker), creates the venv, installs `pdi2dag` +
+the provider, builds the Studio UI, and deploys a **self-contained** copy
+to `C:\PDI-Airflow` (with its own venv, so it runs without Node). Then:
+
+```powershell
+cd C:\PDI-Airflow
+.\run.ps1 -NoBuild        # Studio  -> http://localhost:5012
+.\run-carte.ps1           # Carte   (cluster: .\run-carte-cluster.ps1)
+```
+
+Remove it with `.\uninstall.ps1` (add `-KeepData` to keep DAGs, the file
+repository and settings).
+
+> The venv must be **64-bit** Python — Apache Airflow's `msgspec`
+> dependency has no 32-bit Windows build. The installer selects a
+> versioned 64-bit interpreter automatically.
+
+## Alternative: `make`
 
 ```bash
 make install     # venv (64-bit) + pdi2dag + provider + build the UI
@@ -10,12 +35,8 @@ make test        # run the pdi2dag + provider test suites
 make help        # list all targets
 ```
 
-No `make`? On Windows use `.\run.ps1` (creates the venv, builds the UI,
-serves it); on Linux/macOS `./run.sh`. The manual steps are below.
-
-> The venv must be **64-bit** Python — Apache Airflow's `msgspec`
-> dependency has no 32-bit Windows build. `make`/`run.ps1` prefer a
-> versioned 64-bit interpreter automatically.
+No `make` and no deploy needed? `.\run.ps1` (Windows) / `./run.sh`
+(Linux/macOS) creates the venv, builds the UI and serves it in place.
 
 ---
 

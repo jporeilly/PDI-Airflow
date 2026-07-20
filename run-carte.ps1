@@ -2,7 +2,7 @@
 .SYNOPSIS
   Start Carte for the lab using the consolidated config + file repository
   under this folder. KETTLE_HOME is set to this folder so Carte reads its
-  own .kettle\repositories.xml — your global ~/.kettle is left untouched.
+  own .kettle\repositories.xml - your global ~/.kettle is left untouched.
 
 .DESCRIPTION
   Works in a deployed install (C:\PDI-Airflow, where deploy.ps1 staged

@@ -23,7 +23,7 @@ $py   = Join-Path $venv 'Scripts\python.exe'
 # 1. Python venv + app dependencies (pdi2dag + FastAPI/uvicorn) -----------
 if (-not (Test-Path $py)) {
     Write-Host '==> Creating Python venv and installing dependencies...' -ForegroundColor Cyan
-    # Prefer a 64-bit Python — Airflow's deps (msgspec) have no 32-bit
+    # Prefer a 64-bit Python - Airflow's deps (msgspec) have no 32-bit
     # Windows build. Fall back to whatever is available (fine for the
     # app itself, which doesn't need Airflow).
     $made = $false
@@ -40,16 +40,27 @@ if (-not (Test-Path $py)) {
 }
 
 # 2. Frontend --------------------------------------------------------------
+# -NoBuild serves the existing build and needs NO Node - this is how a
+# deployed install (dist shipped, no node_modules) runs. Dev/build paths
+# do need Node.
 $frontend = Join-Path $root 'webapp\frontend'
-if (-not (Test-Path (Join-Path $frontend 'node_modules'))) {
-    Write-Host '==> Installing frontend packages...' -ForegroundColor Cyan
-    Push-Location $frontend; npm install --no-audit --no-fund; Pop-Location
-}
-
+$dist = Join-Path $frontend 'dist'
 if ($Dev) {
+    if (-not (Test-Path (Join-Path $frontend 'node_modules'))) {
+        Write-Host '==> Installing frontend packages...' -ForegroundColor Cyan
+        Push-Location $frontend; npm install --no-audit --no-fund; Pop-Location
+    }
     Write-Host '==> Starting Vite dev server (http://localhost:5173)...' -ForegroundColor Cyan
     Start-Process -FilePath 'npm' -ArgumentList 'run', 'dev' -WorkingDirectory $frontend
-} elseif (-not $NoBuild) {
+} elseif ($NoBuild) {
+    if (-not (Test-Path $dist)) {
+        throw "No UI build found at $dist. Run without -NoBuild (needs Node) or deploy a built copy."
+    }
+} else {
+    if (-not (Test-Path (Join-Path $frontend 'node_modules'))) {
+        Write-Host '==> Installing frontend packages...' -ForegroundColor Cyan
+        Push-Location $frontend; npm install --no-audit --no-fund; Pop-Location
+    }
     Write-Host '==> Building the UI...' -ForegroundColor Cyan
     Push-Location $frontend; npm run build; Pop-Location
 }

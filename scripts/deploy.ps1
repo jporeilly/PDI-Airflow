@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
   Deploy a runnable copy of PDI-AirFlow to a target directory
-  (default C:\PDI-Airflow) — everything needed to run the Studio and
+  (default C:\PDI-Airflow) - everything needed to run the Studio and
   the lab, without the dev venv / node_modules / caches.
 
 .EXAMPLE
@@ -28,9 +28,13 @@ Write-Host "==> Deploying $src -> $Dest" -ForegroundColor Cyan
 $exclDirs = @('.git', '.venv', 'node_modules', '__pycache__',
               '.pytest_cache', '_pdc_share', '.airflow') |
             ForEach-Object { Join-Path $src "*\$_" }
+# /XD excludes (full $Dest paths) protect the install's own venv and the
+# user's data - DAGs\, repositories\, .kettle\ - from the /MIR purge, so
+# re-running the installer refreshes code without wiping deployments.
 robocopy $src $Dest /MIR `
-    /XD (Join-Path $src '.git') (Join-Path $src '.venv') `
+    /XD (Join-Path $src '.git') (Join-Path $src '.venv') (Join-Path $Dest '.venv') `
         (Join-Path $src '_pdc_share') (Join-Path $src '.airflow') `
+        (Join-Path $Dest 'DAGs') (Join-Path $Dest 'repositories') (Join-Path $Dest '.kettle') `
         node_modules __pycache__ .pytest_cache .idea .vscode `
     /XF '*.pyc' 'settings.json' '*.openlineage.json' `
     /NFL /NDL /NJH /NP | Out-Null
