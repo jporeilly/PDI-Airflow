@@ -16,7 +16,7 @@
 
 FastAPI wrapper around the pdi2dag core. Interactive API docs at
 ``/docs`` (Swagger UI) and ``/redoc``. Error contract (PDC suite
-convention): every error body is ``{"error": msg}`` — never FastAPI's
+convention): every error body is ``{"error": msg}`` - never FastAPI's
 ``detail``. Long work (deploy + wait + activate) runs as a background
 job polled via ``GET /api/jobs/{id}``.
 
@@ -76,7 +76,7 @@ def _setup_logging():
             encoding='utf-8')
         fh.setFormatter(fmt)
         logger.addHandler(fh)
-    except OSError:  # read-only dir — fall back to console only
+    except OSError:  # read-only dir - fall back to console only
         pass
     ch = logging.StreamHandler()
     ch.setFormatter(fmt)
@@ -108,7 +108,7 @@ TAGS = [
     {'name': 'pdi', 'description':
         'Parse and convert PDI files (.kjb jobs, .ktr transformations).'},
     {'name': 'jobs', 'description':
-        'Background jobs — deploy/migrate runs asynchronously; poll '
+        'Background jobs - deploy/migrate runs asynchronously; poll '
         'until status leaves "running".'},
     {'name': 'lineage', 'description':
         'Publish PDI structure to Marquez as OpenLineage events.'},
@@ -118,7 +118,7 @@ TAGS = [
 ]
 
 app = FastAPI(
-    title='PDI–Airflow Migration Studio API',
+    title='PDI-Airflow Migration Studio API',
     version=__version__,
     description='Convert Pentaho Data Integration jobs and '
                 'transformations into scheduled Apache Airflow DAGs, '
@@ -133,7 +133,7 @@ log.info('PDI-AirFlow Migration Studio %s starting', __version__)
 
 @app.middleware('http')
 async def security_headers(request: Request, call_next):
-    """Conservative headers — the Studio is a local same-origin app."""
+    """Conservative headers - the Studio is a local same-origin app."""
     resp = await call_next(request)
     resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
     resp.headers.setdefault('X-Frame-Options', 'DENY')
@@ -160,7 +160,7 @@ def _err(msg, status=400):
 # ------------------------------------------------------------ models
 
 class PdiFile(BaseModel):
-    """A PDI file passed by content — nothing is stored server-side."""
+    """A PDI file passed by content - nothing is stored server-side."""
     filename: str = Field(examples=['nightly_etl.kjb'])
     content: str = Field(description='Raw XML of the .kjb/.ktr file')
 
@@ -195,7 +195,7 @@ class ConvertResponse(BaseModel):
 
 class LineagePublishRequest(BaseModel):
     files: List[PdiFile] = Field(
-        description='Jobs and their transformations together — step '
+        description='Jobs and their transformations together - step '
                     'graphs are spliced into the job graph')
     target: str = Field(
         'marquez',
@@ -375,7 +375,7 @@ def inspect(body: PdiFile):
 def convert_route(body: ConvertRequest):
     """Jobs explode into one task per TRANS/JOB entry (hops become
     dependencies); transformations become a single Carte task. Review
-    the returned warnings — they are the migration TODO list."""
+    the returned warnings - they are the migration TODO list."""
     try:
         doc = _parse_content(body.filename, body.content)
     except ValueError as e:
@@ -492,7 +492,7 @@ def _marquez_states(settings):
           summary='Hierarchical PDI graph: jobs > transformations > steps')
 def pdi_graph(body: GraphRequest):
     """The Marquez-can't-do-this view: a nested graph model of the
-    given files — job entries with dependencies, and inside each
+    given files - job entries with dependencies, and inside each
     transformation its step graph. Latest run states are overlaid from
     Marquez when present (best effort)."""
     from pdi2dag.generator import _collapse_dependencies, _sanitize_id
@@ -568,7 +568,7 @@ def airflow_status():
     url = settings['airflow_url']
     reachable, total, api = False, None, None
     try:
-        # AirflowClient auto-detects the REST API version — v2 + JWT on
+        # AirflowClient auto-detects the REST API version - v2 + JWT on
         # Airflow 3.x, v1 + basic auth on 2.x. A hard-coded /api/v1 probe
         # 404s on Airflow 3.3, which read as "offline".
         client = AirflowClient(
@@ -587,7 +587,7 @@ def airflow_status():
 @app.get('/api/airflow/connections', tags=['services'],
          summary='Carte (pentaho-type) connections defined in Airflow')
 def airflow_connections():
-    """Lists the Airflow connections of type ``pentaho`` — the Carte
+    """Lists the Airflow connections of type ``pentaho`` - the Carte
     servers/clusters a generated DAG can target via ``pdi_conn_id``.
     Powers the connection picker on the Configure page. Returns an empty
     list (not an error) when Airflow is unreachable so the picker
@@ -694,7 +694,7 @@ def _marquez_web_url(settings):
     """Marquez UI URL for the 'open the graph' links. The UI and API run
     on the same host, so when the API URL points at a remote host but the
     UI URL is still localhost (the default), follow the API host and keep
-    the UI's port/scheme — otherwise the graph link opens the wrong (or a
+    the UI's port/scheme - otherwise the graph link opens the wrong (or a
     dead) local Marquez. An explicitly-set remote UI URL is respected."""
     web = (settings.get('marquez_web_url') or '').strip()
     api = (settings.get('marquez_url') or '').strip()
@@ -801,7 +801,7 @@ def _run_migrate(job, payload: MigrateRequest):
             job.update(phase='Activating (unpausing)', done=3)
             client.set_paused(payload.dag_id, False)
             result['activated'] = True
-            job['events'].append('DAG unpaused — schedule {} live'.format(
+            job['events'].append('DAG unpaused - schedule {} live'.format(
                 payload.schedule or 'manual'))
 
         if payload.trigger:

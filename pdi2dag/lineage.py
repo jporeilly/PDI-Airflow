@@ -14,7 +14,7 @@
 # limitations under the License.
 """Emit PDI structure to Marquez as OpenLineage events.
 
-Airflow's OpenLineage provider only sees Airflow tasks — the inside of
+Airflow's OpenLineage provider only sees Airflow tasks - the inside of
 a PDI job stays a black box. This module opens it up:
 
 - **Job level** (.kjb): every TRANS/JOB entry becomes an OpenLineage
@@ -22,7 +22,7 @@ a PDI job stays a black box. This module opens it up:
   ``pdi://`` dataset that its downstream entries read), so Marquez
   renders the same graph you see in Spoon.
 - **Step level** (.ktr): every step becomes an OpenLineage job and
-  every hop a dataset edge — the full step graph of a transformation.
+  every hop a dataset edge - the full step graph of a transformation.
 
 Events are emitted as completed runs (START + COMPLETE), so the graph
 appears immediately without waiting for a Carte execution.
@@ -169,7 +169,7 @@ def build_job_model_events(doc, namespace='pdi', trans_details=None):
     graph is spliced INTO the job graph: the entry job feeds a
     ``.../start`` dataset into the transformation's first step(s), and
     the terminal step(s) produce the entry's result dataset that
-    downstream entries consume — job entries and steps render as one
+    downstream entries consume - job entries and steps render as one
     connected graph in Marquez.
     """
     trans_details = trans_details or {}
@@ -251,7 +251,7 @@ def build_trans_model_events(detail, namespace='pdi', prefix=None,
 #               HostnameResolver) for repository jobs; file:// URI for
 #               file-based ones. This becomes the "PDI Server" node.
 #   job name  = the repository path with a leading '/' (getPathAndName
-#               + prependIfMissing '/'), e.g. /home/bi/nightly_etl —
+#               + prependIfMissing '/'), e.g. /home/bi/nightly_etl -
 #               path segments become the tree's Folders.
 #   jobType facet: processingType=BATCH, integration=PDI,
 #               jobType='job'|'transformation' (lowercase)
@@ -355,7 +355,7 @@ def trans_datasets(detail, step_metrics=None):
     ``database.schema.table``.
 
     When ``step_metrics`` (from :func:`parse_carte_step_metrics`) is
-    given, each dataset gets a real ``rowCount`` from the Carte run —
+    given, each dataset gets a real ``rowCount`` from the Carte run -
     Table Input rows read, Table Output rows written.
 
     Returns (inputs, outputs) as lists of ``{'namespace', 'name',
@@ -418,7 +418,7 @@ def build_pdc_etl_events(doc, trans_details=None, namespace=None,
 
     When ``trans_details`` (transformation name -> PdiTransDetail) is
     given, each transformation event carries the input/output table
-    datasets resolved from its Table Input/Output steps — PDC then
+    datasets resolved from its Table Input/Output steps - PDC then
     creates the data connections, TABLE entities and dataset lineage.
     """
     trans_details = trans_details or {}
@@ -469,7 +469,7 @@ def build_pdc_etl_events(doc, trans_details=None, namespace=None,
                  eventTime=(event_time + timedelta(seconds=2)).isoformat()),
         ]
 
-    # Root job event (no parent — it IS the root).
+    # Root job event (no parent - it IS the root).
     events += run_events(job_name, job_run_id, {}, 'job', now)
 
     # Each executable entry as a child run linked to the job via parent,
@@ -497,7 +497,7 @@ def build_pdc_etl_events(doc, trans_details=None, namespace=None,
 
 def build_pdc_trans_events(detail, repo_path, namespace=None,
                            server_name='pdi2dag', step_metrics=None):
-    """PDC events for a standalone transformation (.ktr) — one
+    """PDC events for a standalone transformation (.ktr) - one
     transformation run (no parent job) carrying its table datasets,
     with real row counts + run state when ``step_metrics`` (from a
     Carte transStatus) are supplied."""
@@ -599,7 +599,7 @@ def collect_connections(details):
 
 
 def build_connection_body(conn, schemas):
-    """PDC create-data-source body for a PDI connection — identity,
+    """PDC create-data-source body for a PDI connection - identity,
     username and schemas only. **No password** (never handled here);
     the user completes credentials in PDC."""
     db_type = _PDC_DB_TYPE.get((conn.db_type or '').upper(),
@@ -629,7 +629,7 @@ def provision_connections(details, base_url, username, password,
     stubs. Returns a list of ``(resourceName, status)`` tuples.
 
     ``dry_run=True`` builds the bodies without sending them. Passwords
-    are never sent — complete each connection in PDC afterwards.
+    are never sent - complete each connection in PDC afterwards.
     """
     bodies = [build_connection_body(c, s)
               for c, s in collect_connections(details)]
@@ -656,7 +656,7 @@ def provision_connections(details, base_url, username, password,
 def emit_pdc(events, base_url, username, password, verify_tls=False,
              timeout=30):
     """POST OpenLineage events to Pentaho Data Catalog's ingestion
-    endpoint (``/lineage/api/events`` — the same endpoint the official
+    endpoint (``/lineage/api/events`` - the same endpoint the official
     PDI OpenLineage plugin targets). PDC builds its ETL Pipelines
     hierarchy and lineage graph from them. Returns events accepted."""
     token = _pdc_token(base_url, username, password,

@@ -220,7 +220,7 @@ def cmd_lineage(args):
                 trans_name = entry.path.split('/')[-1]
                 ktr = os.path.join(args.ktr_dir, trans_name + '.ktr')
                 if not os.path.exists(ktr):
-                    print('  WARNING: no .ktr found for {} ({}) — '
+                    print('  WARNING: no .ktr found for {} ({}) - '
                           'steps skipped.'.format(entry.name, ktr))
                     continue
                 detail = parse_trans_detail(ktr)
@@ -267,7 +267,7 @@ def cmd_lineage(args):
             for ev in events:
                 fh.write(_json.dumps(ev) + '\n')
         print('{} OpenLineage events written to {} (newline-delimited '
-              'JSON — the PDI plugin file-consumer format).'.format(
+              'JSON - the PDI plugin file-consumer format).'.format(
                   len(events), args.out_file))
         print('Import in PDC: Data Catalog -> ETL -> Actions -> Import.')
         return 0
@@ -378,7 +378,7 @@ def main(argv=None):
     p_lineage.add_argument('file', help='.kjb or .ktr file')
     p_lineage.add_argument('--ktr-dir', default=None,
                            help='Folder holding the .ktr files of the '
-                                "job's TRANS entries — enables "
+                                "job's TRANS entries - enables "
                                 'step-level lineage')
     p_lineage.add_argument('--marquez-url',
                            default='http://localhost:6001',
@@ -396,7 +396,7 @@ def main(argv=None):
     p_lineage.add_argument('--carte-status', default=None,
                            help='Carte transStatus XML file (single '
                                 'transformation) or a directory of '
-                                '<transname>.xml files (a job) — adds '
+                                '<transname>.xml files (a job) - adds '
                                 'real row counts and run state from the '
                                 'actual Carte execution')
     p_lineage.add_argument('--out-file', default=None,
@@ -405,7 +405,7 @@ def main(argv=None):
                                 'file-consumer format) for PDC Import')
     p_lineage.add_argument('--pdc-url', default=None,
                            help='Send to Pentaho Data Catalog instead of '
-                                'Marquez (e.g. https://pentaho.io) — uses '
+                                'Marquez (e.g. https://pentaho.io) - uses '
                                 'the /lineage/api/events ingestion '
                                 'endpoint')
     p_lineage.add_argument('--pdc-user', default=None,
@@ -426,7 +426,7 @@ def main(argv=None):
     p_provision.add_argument('--pdc-user', required=True)
     p_provision.add_argument('--pdc-password', required=True,
                              help='PDC (Keycloak) password for API auth '
-                                  '— NOT a database password')
+                                  '- NOT a database password')
     p_provision.add_argument('--dry-run', action='store_true',
                              help='Show what would be created')
     p_provision.set_defaults(func=cmd_provision)

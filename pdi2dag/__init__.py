@@ -12,6 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""pdi2dag — migrate PDI jobs/transformations to Airflow DAGs."""
+"""pdi2dag - migrate PDI jobs/transformations to Airflow DAGs."""
 
-__version__ = '1.17.3'
+__version__ = '1.17.4'

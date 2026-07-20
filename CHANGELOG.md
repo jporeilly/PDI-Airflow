@@ -1,5 +1,17 @@
 # Changelog
 
+## PDI-AirFlow v1.17.4 - 2026-07-20
+
+- **Scheduler verified end-to-end** on the Airflow 3.3 VM after the
+  `execution_api_server_url` fix (v1.15.5): a scheduler-triggered
+  `m01_carte_trans_basic` ran green — VM Airflow -> Windows Carte ->
+  transformation -> Marquez `COMPLETED` (was `FAIL`).
+- **Fix: non-ASCII (em-dash) in generated output.** `pdi2dag` source
+  used U+2014 em-dashes in CLI warnings and the generated-DAG docstring,
+  which rendered as `?`/mojibake on a Windows (cp1252) console and inside
+  generated `.py` files. All `pdi2dag` + backend strings normalised to
+  ASCII; generated DAGs are now clean ASCII.
+
 ## PDI-AirFlow v1.17.3 - 2026-07-20
 
 Remaining production-roadmap items + a UI refinement.

@@ -16,8 +16,8 @@
 plaintext.
 
 Protected values are stored as ``dpapi:<base64>`` and are scoped to the
-current Windows user + machine (``CryptProtectData``). On non-Windows —
-or if DPAPI is unavailable — values pass through unchanged, so the app
+current Windows user + machine (``CryptProtectData``). On non-Windows -
+or if DPAPI is unavailable - values pass through unchanged, so the app
 still works with a plaintext fallback (the Studio runs on Windows, where
 protection is active).
 """

@@ -14,7 +14,7 @@
 # limitations under the License.
 """Minimal Airflow REST API client, supporting Airflow 2.x and 3.x.
 
-- **Airflow 3.x**: stable REST **API v2** with **JWT** auth — a token
+- **Airflow 3.x**: stable REST **API v2** with **JWT** auth - a token
   is obtained from ``POST /auth/token`` and sent as a Bearer header.
 - **Airflow 2.x**: stable **API v1** with **basic auth**
   (``AIRFLOW__API__AUTH_BACKENDS=...backend.basic_auth``).
@@ -113,7 +113,7 @@ class AirflowClient:
                 return True
             time.sleep(poll_interval)
         raise AirflowApiError(
-            "DAG '{}' did not appear within {}s — check the scheduler "
+            "DAG '{}' did not appear within {}s - check the scheduler "
             'logs and the dags folder.'.format(dag_id, timeout))
 
     def set_paused(self, dag_id, paused):

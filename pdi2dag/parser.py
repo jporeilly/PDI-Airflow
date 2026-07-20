@@ -15,7 +15,7 @@
 """Parse PDI .kjb (job) and .ktr (transformation) XML files.
 
 Only orchestration-level information is extracted: the document name,
-its named parameters, and — for jobs — the entries (sub-jobs and
+its named parameters, and - for jobs - the entries (sub-jobs and
 transformations) plus the hops that connect them. Step-level detail
 inside transformations stays in PDI, where it belongs; the generated
 DAG delegates execution to Carte.
@@ -241,7 +241,7 @@ def _parse_trans(root, source_file):
 
 def _step_files(step_node):
     """Extract file path(s) from a file-based step. Handles both the
-    ``<filename>`` form (CSV/Fixed input) and the ``<file><name>…``
+    ``<filename>`` form (CSV/Fixed input) and the ``<file><name>-``
     form (text/Excel/JSON input & output, which may list several)."""
     files = []
     fn = _text(step_node, 'filename')
@@ -262,7 +262,7 @@ def _step_files(step_node):
 def parse_trans_detail(path):
     """Parse a .ktr's step-level structure (steps + hops).
 
-    Used for lineage emission — the DAG generator deliberately stays at
+    Used for lineage emission - the DAG generator deliberately stays at
     orchestration level, but Marquez can show the inside of a
     transformation.
     """
