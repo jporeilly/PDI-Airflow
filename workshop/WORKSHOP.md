@@ -300,3 +300,12 @@ bridge for real table-level datasets.
 | Backfill history | `catchup` / `airflow dags backfill` |
 | Migrate existing .kjb/.ktr | `pdi2dag migrate` |
 | See it all as lineage | OpenLineage → Marquez |
+
+## Capstone — Copper State Credit Union
+
+Bring it all together on a realistic credit-union pipeline: migrate the
+CSCU banking job in the Studio, run it on Carte **single and clustered**
+under the scheduler, and trace one member's data from the `cscu_core`
+source tables into the mart in **Marquez + Pentaho Data Catalog**.
+
+→ **[workshop/cscu/CSCU-CAPSTONE.md](cscu/CSCU-CAPSTONE.md)**

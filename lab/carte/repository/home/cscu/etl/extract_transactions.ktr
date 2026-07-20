@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<transformation>
+  <info>
+    <name>extract_transactions</name>
+    <description>Extract recent posted transactions from the Copper State Credit Union core banking database into the mart staging area.</description>
+    <directory>/home/cscu/etl</directory>
+    <parameters>
+      <parameter><name>since_dt</name><default_value>2026-07-01</default_value></parameter>
+    </parameters>
+  </info>
+  <connection>
+    <name>cscu-core</name>
+    <server>192.168.1.200</server>
+    <type>POSTGRESQL</type>
+    <access>Native</access>
+    <database>cscu_core</database>
+    <username>pdc_user</username>
+    <port>5433</port>
+  </connection>
+  <connection>
+    <name>cscu-mart</name>
+    <server>192.168.1.200</server>
+    <type>POSTGRESQL</type>
+    <access>Native</access>
+    <database>cscu_mart</database>
+    <username>cscu_etl</username>
+    <port>5433</port>
+  </connection>
+  <step>
+    <name>Read Transactions</name>
+    <type>TableInput</type>
+    <connection>cscu-core</connection>
+    <sql>SELECT txn_id, acct_id, txn_dt, post_dt, txn_amt, txn_type_cd, merch_nm, mcc_cd
+FROM cscu_core.transactions
+WHERE post_dt &gt;= '${since_dt}'</sql>
+  </step>
+  <step>
+    <name>Load Staging</name>
+    <type>TableOutput</type>
+    <connection>cscu-mart</connection>
+    <schema>staging</schema>
+    <table>txn_stg</table>
+  </step>
+  <order>
+    <hop><from>Read Transactions</from><to>Load Staging</to><enabled>Y</enabled></hop>
+  </order>
+</transformation>

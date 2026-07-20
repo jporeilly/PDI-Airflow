@@ -1,5 +1,18 @@
 # Changelog
 
+## PDI-AirFlow v1.18.0 - 2026-07-20
+
+- **CSCU capstone workshop** (`workshop/cscu/CSCU-CAPSTONE.md`) - the
+  bring-it-all-together track on the Copper State Credit Union banking
+  pipeline: migrate `cscu_daily_load.kjb` in the Studio, run it on Carte
+  **single and clustered** under the (now-verified) scheduler, and trace
+  a member's data from `cscu_core` source tables into the mart in
+  **Marquez + PDC**. Reuses the same `cscu_core` DB / PDC as the
+  PDC-Scenarios lab. Ships the generated reference DAGs
+  (`workshop/cscu/dags/`) and stages the CSCU transformations in the
+  Carte file repository (`lab/carte/repository/home/cscu/etl/`) so they
+  run live. Linked from README + WORKSHOP.
+
 ## PDI-AirFlow v1.17.4 - 2026-07-20
 
 - **Scheduler verified end-to-end** on the Airflow 3.3 VM after the
