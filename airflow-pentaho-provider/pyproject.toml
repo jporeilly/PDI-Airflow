@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "airflow-provider-pentaho"
+version = "2.0.0"
+description = "Pentaho Data Integration (Carte, Kitchen and Pan) provider for Apache Airflow and Astronomer."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Pentaho" },
+]
+requires-python = ">=3.9"
+classifiers = [
+    "Framework :: Apache Airflow",
+    "Framework :: Apache Airflow :: Provider",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "apache-airflow>=2.7.0",
+    "requests>=2.27.0",
+    "xmltodict>=0.12.0",
+    "psutil>=5.8.0",
+    "asgiref>=3.5.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "pytest-asyncio",
+]
+
+[project.urls]
+Homepage = "https://www.pentaho.com"
+
+[project.entry-points.apache_airflow_provider]
+provider_info = "airflow_pentaho:get_provider_info"
+
+[tool.setuptools.packages.find]
+include = ["airflow_pentaho*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

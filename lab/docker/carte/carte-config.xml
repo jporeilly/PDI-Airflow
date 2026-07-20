@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<slave_config>
+  <slaveserver>
+    <name>CARTE_NAME</name>
+    <hostname>0.0.0.0</hostname>
+    <port>CARTE_PORT</port>
+    <username>CARTE_USER</username>
+    <password>CARTE_PASSWORD</password>
+    <master>Y</master>
+  </slaveserver>
+</slave_config>

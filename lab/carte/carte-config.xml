@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Minimal Carte master configuration for the lab.
+  Start Carte from the PDI folder:
+
+    Windows:  Carte.bat  C:\Projects\PDI-AirFlow\lab\carte\carte-config.xml
+    Linux:    ./carte.sh /path/to/carte-config.xml
+
+  Default HTTP basic auth is cluster/cluster (see pwd/kettle.pwd in
+  your PDI installation).
+-->
+<slave_config>
+  <slaveserver>
+    <name>lab-master</name>
+    <hostname>0.0.0.0</hostname>
+    <port>8081</port>
+    <master>Y</master>
+  </slaveserver>
+</slave_config>

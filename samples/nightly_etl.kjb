@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<job>
+  <name>nightly_etl</name>
+  <description>Nightly warehouse load: extract, load, publish.</description>
+  <directory>/home/bi</directory>
+  <parameters>
+    <parameter>
+      <name>date</name>
+      <default_value></default_value>
+      <description>Processing date yyyy-MM-dd</description>
+    </parameter>
+    <parameter>
+      <name>region</name>
+      <default_value>EMEA</default_value>
+      <description>Sales region</description>
+    </parameter>
+  </parameters>
+  <entries>
+    <entry>
+      <name>Start</name>
+      <type>SPECIAL</type>
+      <start>Y</start>
+      <dummy>N</dummy>
+    </entry>
+    <entry>
+      <name>Extract Sales</name>
+      <type>TRANS</type>
+      <specification_method>rep_name</specification_method>
+      <filename/>
+      <transname>extract_sales</transname>
+      <directory>/home/bi</directory>
+    </entry>
+    <entry>
+      <name>Extract Customers</name>
+      <type>TRANS</type>
+      <specification_method>rep_name</specification_method>
+      <filename/>
+      <transname>extract_customers</transname>
+      <directory>/home/bi</directory>
+    </entry>
+    <entry>
+      <name>Load Warehouse</name>
+      <type>TRANS</type>
+      <specification_method>rep_name</specification_method>
+      <filename/>
+      <transname>load_warehouse</transname>
+      <directory>/home/bi</directory>
+    </entry>
+    <entry>
+      <name>Publish Reports</name>
+      <type>JOB</type>
+      <specification_method>rep_name</specification_method>
+      <filename/>
+      <jobname>publish_reports</jobname>
+      <directory>/home/bi/reporting</directory>
+    </entry>
+    <entry>
+      <name>Mail Failure</name>
+      <type>MAIL</type>
+    </entry>
+    <entry>
+      <name>Success</name>
+      <type>SUCCESS</type>
+    </entry>
+  </entries>
+  <hops>
+    <hop>
+      <from>Start</from>
+      <to>Extract Sales</to>
+      <enabled>Y</enabled>
+      <evaluation>Y</evaluation>
+      <unconditional>Y</unconditional>
+    </hop>
+    <hop>
+      <from>Start</from>
+      <to>Extract Customers</to>
+      <enabled>Y</enabled>
+      <evaluation>Y</evaluation>
+      <unconditional>Y</unconditional>
+    </hop>
+    <hop>
+      <from>Extract Sales</from>
+      <to>Load Warehouse</to>
+      <enabled>Y</enabled>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+    <hop>
+      <from>Extract Customers</from>
+      <to>Load Warehouse</to>
+      <enabled>Y</enabled>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+    <hop>
+      <from>Load Warehouse</from>
+      <to>Publish Reports</to>
+      <enabled>Y</enabled>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+    <hop>
+      <from>Load Warehouse</from>
+      <to>Mail Failure</to>
+      <enabled>Y</enabled>
+      <evaluation>N</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+    <hop>
+      <from>Publish Reports</from>
+      <to>Success</to>
+      <enabled>Y</enabled>
+      <evaluation>Y</evaluation>
+      <unconditional>N</unconditional>
+    </hop>
+  </hops>
+</job>

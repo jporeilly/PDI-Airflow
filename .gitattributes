@@ -1,0 +1,11 @@
+# Normalize line endings. The lab runs on Linux, so shell scripts,
+# Dockerfiles and YAML MUST stay LF; only Windows scripts get CRLF.
+* text=auto eol=lf
+
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# PDI files and other binaries-ish: leave as-is
+*.kjb text eol=lf
+*.ktr text eol=lf

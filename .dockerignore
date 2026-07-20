@@ -1,0 +1,13 @@
+# Keep the Docker build context (repo root) small and fast.
+.git
+.venv
+**/.venv
+**/node_modules
+webapp/frontend/dist
+**/__pycache__
+**/*.egg-info
+.pytest_cache
+**/.pytest_cache
+lab/docker/carte/repository
+*.openlineage.json
+_pdc_share

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- File repository named "Default" to match the lab's pdi_default
+     connection extra ({"rep": "Default", ...}). The content is mounted
+     from lab/docker/carte/repository at compose time. -->
+<repositories>
+  <repository>
+    <id>KettleFileRepository</id>
+    <name>Default</name>
+    <description>Lab file repository (mounted)</description>
+    <base_directory>/home/pentaho/repositories</base_directory>
+    <read_only>N</read_only>
+    <hides_hidden_files>N</hides_hidden_files>
+  </repository>
+</repositories>

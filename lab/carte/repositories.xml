@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Kettle file-repository definition for the lab.
+
+  Place this file in the .kettle folder of the user that runs Carte
+  (Windows: C:\Users\<you>\.kettle\repositories.xml,
+   Linux: ~/.kettle/repositories.xml) or merge it into an existing
+  repositories.xml.
+
+  Create the base directory first, e.g. C:\PDI-Repo, then create the
+  folder /home/bi inside it from Spoon (or as plain directories).
+-->
+<repositories>
+  <repository>
+    <id>KettleFileRepository</id>
+    <name>Default</name>
+    <description>Lab file repository</description>
+    <base_directory>C:\PDI-Repo</base_directory>
+    <read_only>N</read_only>
+    <hides_hidden_files>N</hides_hidden_files>
+  </repository>
+</repositories>

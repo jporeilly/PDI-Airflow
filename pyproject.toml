@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdi2dag"
+version = "2.0.0"
+description = "Migrate Pentaho Data Integration jobs and transformations to scheduled Apache Airflow DAGs."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Pentaho" }]
+requires-python = ">=3.9"
+dependencies = [
+    "requests>=2.27.0",
+]
+
+[project.optional-dependencies]
+webapp = ["fastapi>=0.110", "uvicorn>=0.29"]
+dev = ["pytest>=7.0", "pytest-cov"]
+
+[project.scripts]
+pdi2dag = "pdi2dag.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["pdi2dag*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

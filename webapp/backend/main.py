@@ -1,0 +1,640 @@
+# -*- coding: utf-8 -*-
+# Copyright 2026 Pentaho
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Migration Studio backend.
+
+FastAPI wrapper around the pdi2dag core. Interactive API docs at
+``/docs`` (Swagger UI) and ``/redoc``. Error contract (PDC suite
+convention): every error body is ``{"error": msg}`` — never FastAPI's
+``detail``. Long work (deploy + wait + activate) runs as a background
+job polled via ``GET /api/jobs/{id}``.
+
+Run:  uvicorn main:app --port 5012   (from webapp/backend)
+(5000/5010 = PDC-Glossary, 5011 = PDC-Policy, 6001 = Marquez API)
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+import threading
+import uuid
+from pathlib import Path
+from typing import Dict, List, Optional
+
+import requests
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+
+from pdi2dag import __version__
+from pdi2dag.airflow_api import AirflowClient
+from pdi2dag.generator import ConvertOptions, convert
+from pdi2dag.lineage import (build_job_model_events,
+                             build_pdc_etl_events,
+                             build_trans_model_events, emit, emit_pdc)
+from pdi2dag.parser import parse_file, parse_trans_detail
+
+ROOT = Path(__file__).resolve().parents[1]          # webapp/
+SETTINGS_FILE = ROOT / 'settings.json'
+DIST = ROOT / 'frontend' / 'dist'
+
+DEFAULT_SETTINGS = {
+    'airflow_url': 'http://localhost:8088',
+    'airflow_user': 'admin',
+    'airflow_password': 'admin',
+    'dags_folder': str(ROOT.parent / 'workshop' / 'dags'),
+    'marquez_url': 'http://localhost:6001',
+    'marquez_web_url': 'http://localhost:3000',
+    'marquez_namespace': 'pdi',
+    'pdc_url': 'https://pentaho.io',
+    'pdc_user': '',
+    'pdc_password': '',
+    'pdi_server': 'pdi2dag',
+}
+
+TAGS = [
+    {'name': 'pdi', 'description':
+        'Parse and convert PDI files (.kjb jobs, .ktr transformations).'},
+    {'name': 'jobs', 'description':
+        'Background jobs — deploy/migrate runs asynchronously; poll '
+        'until status leaves "running".'},
+    {'name': 'lineage', 'description':
+        'Publish PDI structure to Marquez as OpenLineage events.'},
+    {'name': 'services', 'description':
+        'Connected services (Airflow, Marquez) and studio settings.'},
+]
+
+app = FastAPI(
+    title='PDI–Airflow Migration Studio API',
+    version=__version__,
+    description='Convert Pentaho Data Integration jobs and '
+                'transformations into scheduled Apache Airflow DAGs, '
+                'deploy them, and publish PDI lineage to Marquez. '
+                'Errors always return `{"error": msg}`.',
+    openapi_tags=TAGS,
+)
+
+
+@app.exception_handler(Exception)
+async def unhandled(request: Request, exc: Exception):
+    return JSONResponse(status_code=500, content={'error': str(exc)})
+
+
+@app.exception_handler(RequestValidationError)
+async def invalid(request: Request, exc: RequestValidationError):
+    return JSONResponse(status_code=422, content={'error': str(exc)})
+
+
+def _err(msg, status=400):
+    return JSONResponse(status_code=status, content={'error': msg})
+
+
+# ------------------------------------------------------------ models
+
+class PdiFile(BaseModel):
+    """A PDI file passed by content — nothing is stored server-side."""
+    filename: str = Field(examples=['nightly_etl.kjb'])
+    content: str = Field(description='Raw XML of the .kjb/.ktr file')
+
+
+class ConvertOptionsModel(BaseModel):
+    schedule: str = Field('', description='Cron, empty = manual only',
+                          examples=['0 6 * * *'])
+    dag_id: str = Field('', description='Override; default = PDI name')
+    conn_id: str = 'pdi_default'
+    mode: str = Field('auto', description='auto | wrap | explode')
+    deferrable: bool = True
+    poll_interval: int = 10
+    retries: int = 0
+    owner: str = 'pdi2dag'
+    start_date: str = Field('', description='YYYY-MM-DD; default today')
+    level: str = 'Basic'
+    params: Dict[str, str] = Field(
+        default_factory=dict,
+        description='PDI parameters; Airflow macros allowed',
+        examples=[{'date': '{{ ds }}'}])
+
+
+class ConvertRequest(PdiFile):
+    options: ConvertOptionsModel = ConvertOptionsModel()
+
+
+class ConvertResponse(BaseModel):
+    dag_id: str
+    code: str
+    warnings: List[str]
+
+
+class LineagePublishRequest(BaseModel):
+    files: List[PdiFile] = Field(
+        description='Jobs and their transformations together — step '
+                    'graphs are spliced into the job graph')
+    target: str = Field(
+        'marquez',
+        description='marquez (lab lineage backend) or pdc (Pentaho '
+                    'Data Catalog /lineage/api/events ingestion)')
+
+
+class MigrateRequest(BaseModel):
+    dag_id: str
+    code: str = Field(description='Generated DAG source')
+    activate: bool = Field(True, description='Unpause after parse')
+    trigger: bool = Field(False, description='Trigger a first run')
+    schedule: str = ''
+
+
+class SettingsModel(BaseModel):
+    """Partial bodies merge server-side (suite convention)."""
+    airflow_url: Optional[str] = None
+    airflow_user: Optional[str] = None
+    airflow_password: Optional[str] = None
+    dags_folder: Optional[str] = None
+    marquez_url: Optional[str] = None
+    marquez_web_url: Optional[str] = None
+    marquez_namespace: Optional[str] = None
+    pdc_url: Optional[str] = None
+    pdc_user: Optional[str] = None
+    pdc_password: Optional[str] = None
+    pdi_server: Optional[str] = None
+
+
+# ---------------------------------------------------------- settings
+
+def load_settings():
+    settings = dict(DEFAULT_SETTINGS)
+    if SETTINGS_FILE.exists():
+        try:
+            settings.update(json.loads(
+                SETTINGS_FILE.read_text(encoding='utf-8')))
+        except (OSError, ValueError):
+            pass
+    return settings
+
+
+@app.get('/api/settings', tags=['services'],
+         summary='Current studio settings')
+def get_settings():
+    return load_settings()
+
+
+@app.post('/api/settings', tags=['services'],
+          summary='Update settings (partial merge)')
+def post_settings(body: SettingsModel):
+    settings = load_settings()
+    settings.update({k: v for k, v in body.model_dump().items()
+                     if v is not None})
+    SETTINGS_FILE.write_text(
+        json.dumps(settings, indent=2), encoding='utf-8')
+    return settings
+
+
+@app.get('/api/version', tags=['services'], summary='Studio version')
+def version():
+    return {'version': __version__}
+
+
+# --------------------------------------------------------- pdi routes
+
+def _parse_content(filename, content):
+    suffix = os.path.splitext(filename or 'file.kjb')[1] or '.kjb'
+    fd, tmp = tempfile.mkstemp(suffix=suffix)
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.write(content)
+        doc = parse_file(tmp)
+    finally:
+        os.unlink(tmp)
+    doc.source_file = filename
+    return doc
+
+
+def _parse_trans_content(filename, content):
+    fd, tmp = tempfile.mkstemp(suffix='.ktr')
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            f.write(content)
+        return parse_trans_detail(tmp)
+    finally:
+        os.unlink(tmp)
+
+
+def _hop_kind(hop):
+    if hop.unconditional:
+        return 'unconditional'
+    return 'success' if hop.evaluation else 'failure'
+
+
+@app.post('/api/inspect', tags=['pdi'],
+          summary='Parse a PDI file into its orchestration structure')
+def inspect(body: PdiFile):
+    """Returns kind, repository path, named parameters, entries (for
+    jobs) and hops. Step-level detail is used by lineage publishing,
+    not by this endpoint."""
+    try:
+        doc = _parse_content(body.filename, body.content)
+    except ValueError as e:
+        return _err(str(e))
+    return {
+        'kind': doc.kind,
+        'name': doc.name,
+        'repo_path': doc.repo_path,
+        'description': doc.description,
+        'parameters': [
+            {'name': p.name, 'default': p.default,
+             'description': p.description}
+            for p in doc.parameters],
+        'entries': [
+            {'name': e.name, 'type': e.entry_type, 'path': e.path,
+             'is_start': e.is_start, 'executable': e.is_executable}
+            for e in doc.entries],
+        'hops': [
+            {'from': h.from_name, 'to': h.to_name,
+             'enabled': h.enabled, 'kind': _hop_kind(h)}
+            for h in doc.hops],
+    }
+
+
+@app.post('/api/convert', tags=['pdi'], response_model=ConvertResponse,
+          summary='Generate an Airflow DAG from a PDI file')
+def convert_route(body: ConvertRequest):
+    """Jobs explode into one task per TRANS/JOB entry (hops become
+    dependencies); transformations become a single Carte task. Review
+    the returned warnings — they are the migration TODO list."""
+    try:
+        doc = _parse_content(body.filename, body.content)
+    except ValueError as e:
+        return _err(str(e))
+    o = body.options
+    options = ConvertOptions(
+        schedule=o.schedule or None,
+        dag_id=o.dag_id or None,
+        conn_id=o.conn_id or 'pdi_default',
+        mode=o.mode,
+        deferrable=o.deferrable,
+        poll_interval=o.poll_interval,
+        params=dict(o.params),
+        retries=o.retries,
+        owner=o.owner,
+        start_date=o.start_date or None,
+        level=o.level)
+    result = convert(doc, options)
+    return {'dag_id': result.dag_id, 'code': result.code,
+            'warnings': result.warnings}
+
+
+# ------------------------------------------------------------ lineage
+
+@app.post('/api/lineage/publish', tags=['lineage'],
+          summary='Publish PDI structure to Marquez')
+def lineage_publish(body: LineagePublishRequest):
+    """Emits OpenLineage events: job entries as jobs with hop-derived
+    dataset edges; transformation step graphs are spliced into the job
+    graph (entry -> steps -> next entry). Unreferenced transformations
+    get standalone step graphs."""
+    if not body.files:
+        return _err('No files supplied')
+    settings = load_settings()
+    ns = settings['marquez_namespace']
+
+    job_docs, trans_details = [], {}
+    for f in body.files:
+        try:
+            if f.filename.lower().endswith('.kjb'):
+                job_docs.append(_parse_content(f.filename, f.content))
+            else:
+                detail = _parse_trans_content(f.filename, f.content)
+                trans_details[detail.name] = detail
+        except ValueError as e:
+            return _err('{}: {}'.format(f.filename, e))
+
+    events, jobs, steps = [], 0, 0
+    referenced = set()
+    for doc in job_docs:
+        if body.target in ('pdc', 'file'):
+            # Plugin-accurate: hostname namespace + repo-path names +
+            # ParentRunFacet + table datasets from Table Input/Output.
+            events.extend(build_pdc_etl_events(
+                doc, trans_details=trans_details,
+                server_name=settings.get('pdi_server', 'pdi2dag')))
+        else:
+            events.extend(build_job_model_events(
+                doc, namespace=ns, trans_details=trans_details))
+        jobs += len(doc.executable_entries)
+        for entry in doc.executable_entries:
+            trans_name = (entry.path or '').split('/')[-1]
+            if trans_name in trans_details:
+                referenced.add(trans_name)
+                steps += len(trans_details[trans_name].steps)
+
+    for name, detail in trans_details.items():
+        if name not in referenced:
+            events.extend(build_trans_model_events(detail, namespace=ns))
+            steps += len(detail.steps)
+
+    if body.target == 'file':
+        # Return the newline-delimited JSON for PDC's ETL Import action
+        ndjson = '\n'.join(json.dumps(e) for e in events) + '\n'
+        return JSONResponse(content={'events': len(events), 'jobs': jobs,
+                                     'steps': steps, 'target': 'file',
+                                     'ndjson': ndjson})
+
+    try:
+        if body.target == 'pdc':
+            if not settings['pdc_user']:
+                return _err('Set pdc_user / pdc_password under Settings '
+                            'first')
+            emit_pdc(events, settings['pdc_url'],
+                     settings['pdc_user'], settings['pdc_password'])
+        else:
+            emit(events, settings['marquez_url'])
+    except (RuntimeError, requests.RequestException) as e:
+        return _err(str(e), status=502)
+    return {'events': len(events), 'jobs': jobs, 'steps': steps,
+            'namespace': ns, 'target': body.target}
+
+
+class GraphRequest(BaseModel):
+    files: List[PdiFile]
+
+
+def _marquez_states(settings):
+    """Best-effort latest-run states from Marquez, keyed by job name."""
+    try:
+        rs = requests.get(
+            '{}/api/v1/namespaces/{}/jobs?limit=200'.format(
+                settings['marquez_url'], settings['marquez_namespace']),
+            timeout=5)
+        if rs.status_code != 200:
+            return {}
+        return {j.get('name'): (j.get('latestRun') or {}).get('state')
+                for j in rs.json().get('jobs', [])}
+    except requests.RequestException:
+        return {}
+
+
+@app.post('/api/pdi/graph', tags=['lineage'],
+          summary='Hierarchical PDI graph: jobs > transformations > steps')
+def pdi_graph(body: GraphRequest):
+    """The Marquez-can't-do-this view: a nested graph model of the
+    given files — job entries with dependencies, and inside each
+    transformation its step graph. Latest run states are overlaid from
+    Marquez when present (best effort)."""
+    from pdi2dag.generator import _collapse_dependencies, _sanitize_id
+
+    if not body.files:
+        return _err('No files supplied')
+    settings = load_settings()
+    states = _marquez_states(settings)
+
+    job_docs, trans_details = [], {}
+    for f in body.files:
+        try:
+            if f.filename.lower().endswith('.kjb'):
+                job_docs.append(_parse_content(f.filename, f.content))
+            else:
+                detail = _parse_trans_content(f.filename, f.content)
+                trans_details[detail.name] = detail
+        except ValueError as e:
+            return _err('{}: {}'.format(f.filename, e))
+
+    def steps_block(detail, prefix):
+        return {
+            'nodes': [
+                {'id': _sanitize_id(s.name), 'name': s.name,
+                 'step_type': s.step_type,
+                 'state': states.get('{}.{}'.format(
+                     prefix, _sanitize_id(s.name)))}
+                for s in detail.steps],
+            'edges': [
+                {'from': _sanitize_id(h.from_name),
+                 'to': _sanitize_id(h.to_name)}
+                for h in detail.hops if h.enabled],
+        }
+
+    jobs_out, referenced = [], set()
+    for doc in job_docs:
+        deps, _, _ = _collapse_dependencies(doc)
+        entries = []
+        for entry in doc.executable_entries:
+            slug = _sanitize_id(entry.name)
+            trans_name = (entry.path or '').split('/')[-1]
+            detail = trans_details.get(trans_name)
+            if detail:
+                referenced.add(trans_name)
+            entries.append({
+                'id': slug,
+                'name': entry.name,
+                'type': entry.entry_type,
+                'path': entry.path,
+                'deps': [_sanitize_id(u)
+                         for u in deps.get(entry.name, [])],
+                'state': states.get('{}.{}'.format(doc.name, slug)),
+                'steps': (steps_block(detail, detail.name)
+                          if detail else None),
+            })
+        jobs_out.append({'name': doc.name, 'path': doc.repo_path,
+                         'entries': entries})
+
+    standalone = [
+        {'name': name, 'steps': steps_block(detail, name)}
+        for name, detail in trans_details.items()
+        if name not in referenced]
+
+    return {'jobs': jobs_out, 'transformations': standalone}
+
+
+# ------------------------------------------------------- service proxies
+
+@app.get('/api/airflow/status', tags=['services'],
+         summary='Airflow reachability and DAG count')
+def airflow_status():
+    settings = load_settings()
+    url = settings['airflow_url']
+    try:
+        rs = requests.get(
+            '{}/api/v1/dags?limit=1'.format(url),
+            auth=(settings['airflow_user'], settings['airflow_password']),
+            timeout=5)
+        reachable = rs.status_code == 200
+        total = rs.json().get('total_entries') if reachable else None
+    except requests.RequestException:
+        reachable, total = False, None
+    return {'reachable': reachable, 'url': url, 'dag_count': total}
+
+
+def _pdi_level(job):
+    """Human label from the OpenLineage jobType facet: STEP for
+    transformation steps, TRANS/JOB for PDI entries, DAG/TASK for
+    Airflow-emitted lineage."""
+    facets = job.get('facets') or {}
+    job_type = (facets.get('jobType') or {}).get('jobType')
+    if job_type:
+        return job_type
+    # Airflow provider lineage: DAGs have no dot, tasks do
+    return 'TASK' if '.' in (job.get('name') or '') else 'DAG'
+
+
+@app.get('/api/pdc/status', tags=['services'],
+         summary='Pentaho Data Catalog reachability and auth')
+def pdc_status():
+    settings = load_settings()
+    url = settings.get('pdc_url') or ''
+    reachable = False
+    authenticated = False
+    if url:
+        try:
+            rs = requests.get(
+                url.rstrip('/') + '/keycloak/realms/pdc/'
+                '.well-known/openid-configuration',
+                verify=False, timeout=5)
+            reachable = rs.status_code < 500
+        except requests.RequestException:
+            reachable = False
+        if reachable and settings.get('pdc_user') \
+                and settings.get('pdc_password'):
+            try:
+                from pdi2dag.lineage import _pdc_token
+                _pdc_token(url, settings['pdc_user'],
+                           settings['pdc_password'], verify_tls=False,
+                           timeout=8)
+                authenticated = True
+            except Exception:  # noqa: BLE001 - status probe only
+                authenticated = False
+    return {'reachable': reachable, 'authenticated': authenticated,
+            'url': url}
+
+
+@app.get('/api/marquez/jobs', tags=['lineage'],
+         summary='Jobs in the configured Marquez namespace')
+def marquez_jobs():
+    settings = load_settings()
+    ns = settings['marquez_namespace']
+    try:
+        rs = requests.get(
+            '{}/api/v1/namespaces/{}/jobs?limit=100'.format(
+                settings['marquez_url'], ns),
+            timeout=10)
+    except requests.RequestException as e:
+        return _err('Cannot reach Marquez: {}'.format(e), status=502)
+    if rs.status_code == 404:
+        jobs = []
+    elif rs.status_code >= 400:
+        return _err('Marquez returned HTTP {}'.format(rs.status_code),
+                    status=502)
+    else:
+        jobs = rs.json().get('jobs', [])
+    return {
+        'namespace': ns,
+        'marquez_url': settings['marquez_web_url'],
+        'jobs': [
+            {
+                'name': j.get('name'),
+                'type': _pdi_level(j),
+                'state': (j.get('latestRun') or {}).get('state'),
+                'duration_ms': (j.get('latestRun') or {}).get('durationMs'),
+                'updated_at': j.get('updatedAt'),
+            }
+            for j in jobs],
+    }
+
+
+# ------------------------------------------------------------------ jobs
+
+JOBS = {}
+
+
+def _run_migrate(job, payload: MigrateRequest):
+    settings = load_settings()
+    try:
+        dags_folder = Path(settings['dags_folder'])
+        dag_file = dags_folder / '{}.py'.format(payload.dag_id)
+
+        job.update(phase='Writing DAG file', detail=str(dag_file), done=1)
+        dags_folder.mkdir(parents=True, exist_ok=True)
+        dag_file.write_text(payload.code, encoding='utf-8')
+        job['events'].append('Wrote {}'.format(dag_file))
+
+        client = AirflowClient(settings['airflow_url'],
+                               settings['airflow_user'],
+                               settings['airflow_password'])
+        result = {'dag_id': payload.dag_id, 'dag_file': str(dag_file),
+                  'activated': False, 'run_id': None}
+
+        if payload.activate or payload.trigger:
+            job.update(phase='Waiting for the scheduler to parse the DAG',
+                       detail='new files are scanned every 5 minutes',
+                       done=2)
+            client.wait_for_dag(payload.dag_id)
+            job['events'].append('DAG parsed by the scheduler')
+
+        if payload.activate:
+            job.update(phase='Activating (unpausing)', done=3)
+            client.set_paused(payload.dag_id, False)
+            result['activated'] = True
+            job['events'].append('DAG unpaused — schedule {} live'.format(
+                payload.schedule or 'manual'))
+
+        if payload.trigger:
+            job.update(phase='Triggering first run', done=4)
+            run = client.trigger_dag_run(payload.dag_id)
+            result['run_id'] = run.get('dag_run_id')
+            job['events'].append('Triggered run {}'.format(
+                result['run_id']))
+
+        job.update(status='done', phase='Done', detail='',
+                   done=job['total'], result=result)
+    except Exception as e:  # noqa: BLE001 - job reports its own failure
+        job.update(status='error', detail=str(e))
+
+
+@app.post('/api/jobs/migrate', tags=['jobs'],
+          summary='Start a deploy/activate/trigger job for one DAG')
+def start_migrate(payload: MigrateRequest):
+    """Returns immediately with the job dict; poll GET /api/jobs/{id}
+    until status is 'done' or 'error'. The wait-for-parse phase can
+    take up to one scheduler scan cycle (~5 minutes) for new files."""
+    job = {
+        'id': uuid.uuid4().hex[:12],
+        'status': 'running',
+        'phase': 'Starting',
+        'detail': '',
+        'done': 0,
+        'total': 5,
+        'events': [],
+        'result': None,
+    }
+    JOBS[job['id']] = job
+    threading.Thread(target=_run_migrate, args=(job, payload),
+                     daemon=True).start()
+    return job
+
+
+@app.get('/api/jobs/{job_id}', tags=['jobs'],
+         summary='Poll a background job')
+def get_job(job_id: str):
+    job = JOBS.get(job_id)
+    if not job:
+        return _err('Unknown job', status=404)
+    return job
+
+
+# ------------------------------------------------------------- static UI
+
+if DIST.exists():
+    app.mount('/', StaticFiles(directory=str(DIST), html=True),
+              name='frontend')

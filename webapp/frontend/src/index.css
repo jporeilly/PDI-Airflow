@@ -1,0 +1,369 @@
+/* PDC Glossary Generator — same design system as the Policy Generator and
+   Migration Copilot. Themes: every color is a variable; status colors are
+   fixed and always pair with an icon + label.
+   Everything above the "glossary app shell" section is copied wholesale from
+   PDC-Policy/frontend/src/index.css — keep the two files in sync. */
+
+:root, :root[data-theme="midnight"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface-1: #1a1a19;
+  --surface-2: #242423;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --gridline: #2c2c2a;
+  --baseline: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --accent: #3987e5;
+  --accent-ink: #0d0d0d;
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+  --radius: 10px;
+}
+
+:root[data-theme="slate"] {
+  color-scheme: dark;
+  --page: #0f1419; --surface-1: #161d26; --surface-2: #1f2937;
+  --text-primary: #f3f6fa; --text-secondary: #b8c4d0; --text-muted: #7d8b99;
+  --gridline: #263241; --baseline: #34455a; --border: rgba(255, 255, 255, 0.10);
+  --accent: #1baf7a; --accent-ink: #081109;
+}
+
+:root[data-theme="pentaho"] {
+  color-scheme: dark;
+  --page: #0c1220; --surface-1: #121b30; --surface-2: #1b2742;
+  --text-primary: #f5f7fc; --text-secondary: #bfc9dd; --text-muted: #7f8cab;
+  --gridline: #223154; --baseline: #2e4068; --border: rgba(255, 255, 255, 0.10);
+  --accent: #eb6834; --accent-ink: #140803;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --page: #f9f9f7; --surface-1: #fcfcfb; --surface-2: #f0efec;
+  --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #898781;
+  --gridline: #e1e0d9; --baseline: #c3c2b7; --border: rgba(11, 11, 11, 0.10);
+  --accent: #2a78d6; --accent-ink: #ffffff;
+}
+
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--page); color: var(--text-primary); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.app { max-width: 1180px; margin: 0 auto; padding: 2.25rem 1.5rem 4rem; }
+
+/* ---------- header ---------- */
+.masthead {
+  display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap;
+  gap: .75rem; padding-bottom: 1.1rem; border-bottom: 1px solid var(--gridline);
+}
+.masthead h1 { font-size: 1.5rem; font-weight: 650; }
+.masthead h1 em { color: var(--accent); font-style: normal; }
+.masthead .links { color: var(--text-muted); font-size: .85rem; }
+.masthead .links a { color: var(--accent); text-decoration: none; }
+button.version {
+  margin-left: .65rem; vertical-align: middle; background: var(--surface-2); color: var(--accent);
+  border: none; border-radius: 99px; padding: .18rem .7rem;
+  font: 650 .78rem system-ui, "Segoe UI", sans-serif; cursor: pointer;
+}
+button.version:hover { background: var(--gridline); text-decoration: underline; }
+button.nav { background: none; border: none; color: var(--accent); cursor: pointer; font: inherit; padding: 0; }
+button.nav.active { text-decoration: underline; }
+.tagline { color: var(--text-muted); font-size: .9rem; margin: 1rem 0 1.5rem; }
+
+/* ---------- stepper ---------- */
+.stepper {
+  display: flex; list-style: none; overflow-x: auto;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1rem 1.25rem; margin: 0 0 2rem;
+}
+.stepper li { display: flex; align-items: center; flex: 1; min-width: 0; }
+.stepper button {
+  display: flex; align-items: center; gap: .75rem; background: none; border: none;
+  cursor: pointer; padding: .55rem .7rem; border-radius: 8px; text-align: left;
+}
+.stepper button:disabled { cursor: not-allowed; opacity: .45; }
+.stepper button:not(:disabled):hover { background: var(--surface-2); }
+.stepper .dot {
+  width: 38px; height: 38px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  font-size: 1rem; font-weight: 650; background: var(--surface-2); color: var(--text-muted);
+  border: 2px solid var(--baseline);
+}
+.stepper li.active .dot { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.stepper li.done .dot { background: transparent; color: var(--status-good); border-color: var(--status-good); }
+.step-text { display: flex; flex-direction: column; line-height: 1.35; min-width: 0; gap: .1rem; }
+.step-label { font-size: .95rem; font-weight: 650; color: var(--text-primary); }
+.stepper li.locked .step-label { color: var(--text-muted); }
+.step-hint { font-size: .74rem; color: var(--text-muted); white-space: nowrap; }
+.stepper .bar { flex: 1; height: 2px; background: var(--gridline); margin: 0 .9rem; min-width: 18px; border-radius: 1px; }
+.stepper li.done .bar { background: var(--status-good); }
+
+/* ---------- cards / layout ---------- */
+.card {
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.6rem 1.7rem; margin-top: 1.75rem;
+}
+.card > header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.card h2 { font-size: 1.12rem; font-weight: 650; }
+.card h2 span { color: var(--text-muted); font-weight: 400; font-size: .85rem; margin-left: .6rem; }
+.subhead { font-size: .82rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin: 1.3rem 0 .6rem; }
+.hint-line { color: var(--text-secondary); font-size: .88rem; margin: .4rem 0 .8rem; }
+.muted { color: var(--text-muted); font-weight: 400; }
+.summary { color: var(--text-muted); font-size: .9rem; margin-top: .35rem; }
+.summary b { color: var(--text-primary); }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; }
+
+/* ---------- tiles ---------- */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; margin-bottom: 1.25rem; }
+.tile { background: var(--surface-2); border-radius: 8px; padding: .8rem 1rem; }
+.tile .value { font-size: 1.7rem; font-weight: 650; line-height: 1.2; }
+.tile .label { color: var(--text-muted); font-size: .78rem; margin-top: .15rem; }
+
+/* ---------- buttons / forms ---------- */
+button.primary, button.ghost {
+  border: none; border-radius: 8px; font: 600 .9rem system-ui, "Segoe UI", sans-serif;
+  padding: .55rem 1.15rem; cursor: pointer;
+}
+button.primary { background: var(--accent); color: var(--accent-ink); }
+button.primary:hover { filter: brightness(1.12); }
+button.primary:disabled { opacity: .55; cursor: not-allowed; }
+button.ghost { background: var(--surface-2); color: var(--text-primary); }
+button.ghost:hover { background: var(--gridline); }
+button.ghost:disabled { opacity: .55; cursor: not-allowed; }
+.actions { display: flex; gap: .75rem; align-items: center; margin-top: 1.1rem; flex-wrap: wrap; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.form-grid label, .field { display: flex; flex-direction: column; gap: .35rem; font-size: .82rem; color: var(--text-muted); }
+.form-grid select, .form-grid input, .field input, .field select, input.text, select.text, textarea.text {
+  background: var(--surface-2); color: var(--text-primary); border: none; border-radius: 8px;
+  padding: .55rem .75rem; font: .9rem system-ui, "Segoe UI", sans-serif;
+}
+.form-grid select:focus, .form-grid input:focus, .field input:focus, .field select:focus,
+input.text:focus, select.text:focus, textarea.text:focus { outline: 2px solid var(--accent); }
+label.check { display: flex; flex-direction: row; align-items: center; gap: .5rem; color: var(--text-secondary); font-size: .85rem; }
+.ok { color: var(--status-good); }
+.warn { color: var(--status-warning); }
+
+.error {
+  background: rgba(208, 59, 59, 0.14); border-left: 3px solid var(--status-critical);
+  color: #f0b9b9; padding: .8rem 1.1rem; border-radius: 8px; margin-top: 1.2rem;
+}
+:root[data-theme="light"] .error { color: #8c1f1f; }
+.loading { color: var(--text-muted); margin-top: 1.2rem; }
+
+/* ---------- tables ---------- */
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th { text-align: left; color: var(--text-muted); font-weight: 500; padding: .4rem .6rem; }
+td { padding: .55rem .6rem; background: var(--surface-2); vertical-align: top; }
+tbody tr { border-bottom: 4px solid var(--surface-1); }
+tr td:first-child { border-radius: 8px 0 0 8px; }
+tr td:last-child { border-radius: 0 8px 8px 0; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.notes { color: var(--text-muted); font-size: .84rem; }
+.cell-clip { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-link { cursor: pointer; }
+.row-link:hover td { background: var(--gridline); }
+.mapping-link { color: var(--accent); font-weight: 600; }
+code, .mono { font-family: Consolas, "Cascadia Mono", monospace; font-size: .84em; }
+
+/* ---------- badges ---------- */
+.badge {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .1rem .6rem; border-radius: 99px; font-size: .78rem; font-weight: 650;
+}
+.badge.good { color: var(--status-good); background: rgba(12, 163, 12, 0.14); }
+.badge.warning { color: var(--status-warning); background: rgba(250, 178, 25, 0.13); }
+.badge.serious { color: var(--status-serious); background: rgba(236, 131, 90, 0.14); }
+.badge.neutral { color: var(--text-secondary); background: var(--surface-2); }
+.badge.accent { color: var(--accent); background: rgba(57, 135, 229, 0.14); }
+
+/* ---------- progress ---------- */
+.progress-track { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; margin: .6rem 0; }
+.progress-bar { height: 100%; background: var(--accent); border-radius: 4px; transition: width .3s; }
+
+/* ---------- modal (DocModal) ---------- */
+.modal-overlay { position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; padding: 2rem; }
+.modal { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); width: min(680px, 100%); max-height: 80vh; display: flex; flex-direction: column; }
+.modal > header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--gridline); }
+.modal > header h3 { font-size: 1.05rem; }
+.modal-body { padding: .5rem 1.4rem 1.4rem; overflow-y: auto; }
+.modal-body .md h2 { font-size: 1.05rem; margin-top: 1.1rem; }
+.modal-body .md h3 { font-size: .98rem; margin-top: 1rem; color: var(--accent); }
+.modal-body .md h4 { font-size: .86rem; margin-top: .8rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+.modal-body .md p { color: var(--text-secondary); font-size: .88rem; margin-top: .5rem; }
+.modal-body .md li { color: var(--text-secondary); font-size: .88rem; margin: .3rem 0 0 1.2rem; }
+.modal-body .md code { background: var(--page); border-radius: 4px; padding: .05rem .35rem; }
+.modal-body .md a { color: var(--accent); }
+
+/* ---------- settings ---------- */
+.back-btn { margin-top: 1.2rem; }
+.settings dl { display: grid; grid-template-columns: auto 1fr; gap: .35rem 1.2rem; font-size: .88rem; }
+.settings dt { color: var(--text-muted); }
+.settings dd { color: var(--text-secondary); margin: 0; }
+
+/* ---------- skipped buckets ---------- */
+.bucket-group { margin-top: .9rem; }
+.bucket-title { display: flex; align-items: center; gap: .55rem; font-size: .9rem; font-weight: 650; }
+.bucket-list { margin: .4rem 0 0 1.4rem; color: var(--text-secondary); font-size: .86rem; }
+.bucket-list li { margin-top: .2rem; }
+
+/* ==========================================================================
+   App shell — the canonical PDC suite shell, copied from PDC-Insights
+   (frontend/src/index.css, "app shell" + settings sections). Keep these rules
+   byte-identical across Insights / Glossary / Policy.
+   ========================================================================== */
+.shell { display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
+.side {
+  background: var(--surface-1); border-right: 1px solid var(--gridline);
+  display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
+}
+.brand { display: flex; align-items: center; gap: .7rem; padding: 1.1rem 1.1rem .9rem; }
+.brand-mark {
+  width: 32px; height: 32px; border-radius: 8px; background: var(--accent);
+  color: var(--accent-ink); display: grid; place-items: center; flex: none;
+}
+.brand-name { font-size: .98rem; font-weight: 650; line-height: 1.15; }
+.brand-name em { color: var(--accent); font-style: normal; }
+.brand-sub { font-size: .72rem; color: var(--text-muted); }
+.version-pill {
+  margin-left: auto; background: var(--surface-2); color: var(--accent); border: none;
+  border-radius: 99px; padding: .12rem .55rem; font: 650 .72rem system-ui, "Segoe UI", sans-serif;
+}
+button.version-pill { cursor: pointer; }
+button.version-pill:hover { background: var(--gridline); }
+.nav { padding: .3rem .6rem; overflow-y: auto; flex: 1; }
+.nav-label {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--text-muted); padding: .9rem .55rem .35rem; font-weight: 650;
+}
+.nav-item {
+  display: flex; align-items: center; gap: .6rem; width: 100%; text-align: left;
+  padding: .48rem .6rem; border: none; border-radius: 8px; background: none;
+  color: var(--text-secondary); font-size: .9rem; font-weight: 500; cursor: pointer;
+}
+.nav-item:hover { background: var(--surface-2); color: var(--text-primary); }
+.nav-item.active { background: var(--accent); color: var(--accent-ink); }
+.nav-item:disabled { opacity: .45; cursor: not-allowed; }
+.nav-item:disabled:hover { background: none; color: var(--text-secondary); }
+.nav-ico { width: 17px; height: 17px; opacity: .8; flex: none; }
+.nav-badge {
+  margin-left: auto; font-size: .68rem; background: var(--surface-2); color: var(--text-muted);
+  border-radius: 20px; padding: .05rem .45rem; font-weight: 650;
+}
+.nav-item.active .nav-badge { background: color-mix(in srgb, var(--accent-ink) 18%, transparent); color: var(--accent-ink); }
+/* indented child pages under a parent workflow item (Connect → Schema / Files):
+   same typography and icon sizing, just inset so the child icon sits under the
+   parent's label */
+.nav-item.nav-sub { padding-left: calc(1.2rem + 17px); }
+.side-foot { padding: .7rem .8rem; border-top: 1px solid var(--gridline); display: grid; gap: .35rem; }
+.side-foot select { width: 100%; }
+.conn { display: flex; align-items: center; gap: .5rem; font-size: .76rem; color: var(--text-muted); padding: .1rem .2rem; }
+.conn a { color: var(--text-secondary); text-decoration: none; }
+.conn a:hover { color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dot.ok { background: var(--status-good); }
+.dot.warn { background: var(--status-warning); }
+
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar {
+  display: flex; align-items: center; gap: 1rem; padding: .7rem 1.5rem;
+  border-bottom: 1px solid var(--gridline); background: var(--surface-1);
+  position: sticky; top: 0; z-index: 20;
+}
+.crumb { font-size: .8rem; color: var(--text-muted); }
+.crumb b { color: var(--text-secondary); font-weight: 600; }
+.topbar-spacer { flex: 1; }
+.content { padding: 1.4rem 1.5rem 3.5rem; max-width: 1220px; width: 100%; margin: 0 auto; }
+
+/* Settings page card grid — canonical (Insights). */
+.set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; max-width: 1020px; }
+.set-grid .card { margin-top: 0; }
+.set-grid .span2 { grid-column: span 2; }
+@media (max-width: 900px) { .set-grid { grid-template-columns: 1fr; } .set-grid .span2 { grid-column: span 1; } }
+.card .desc { font-size: .82rem; color: var(--text-muted); margin: .2rem 0 1rem; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { border: none; background: var(--surface-2); padding: .45rem .9rem; font-size: .8rem; font-weight: 500; color: var(--text-muted); cursor: pointer; }
+.seg button.on { background: var(--accent); color: var(--accent-ink); }
+
+/* ==========================================================================
+   Glossary-only additions (page heads, what's-new panel, home page bits).
+   ========================================================================== */
+.page-head { margin-bottom: 1rem; }
+.page-head h1 { font-size: 1.35rem; font-weight: 650; }
+.page-head .psub { margin-top: .25rem; color: var(--text-muted); font-size: .86rem; }
+.workcycle { color: var(--text-secondary); font-size: .88rem; margin: .6rem 0 0 1.2rem; line-height: 1.7; }
+.workcycle li { margin-top: .35rem; }
+details.card > summary { cursor: pointer; font-weight: 650; font-size: .95rem; }
+.wn-release { border-top: 1px solid var(--gridline); margin-top: .9rem; padding-top: .7rem; }
+.wn-release .md p, .wn-release .md li { font-size: .84rem; }
+.dot-num {
+  width: 22px; height: 22px; border-radius: 50%; flex: none; display: inline-grid;
+  place-items: center; font-size: .78rem; font-weight: 650;
+  background: var(--accent); color: var(--accent-ink);
+}
+.stub { color: var(--text-muted); }
+.stub .badge { margin-left: .6rem; }
+button.mini { padding: .18rem .6rem; font-size: .78rem; }
+
+/* ---------- shared by the Connect / Schema / Files pages ----------
+   Moved up from connect.css when Schema and Files split into their own
+   pages — each page bundles its own CSS, so cross-page rules live here. */
+
+/* monospace paste boxes (bulk CSV on Connect, DDL on Schema) */
+.csv-box {
+  width: 100%; min-height: 110px; resize: vertical;
+  background: var(--surface-2); color: var(--text-primary);
+  border: none; border-radius: 8px; padding: .6rem .75rem;
+  font-family: Consolas, "Cascadia Mono", monospace; font-size: .8rem; line-height: 1.5;
+  white-space: pre; overflow: auto;
+}
+.csv-box:focus { outline: 2px solid var(--accent); }
+
+/* check / verdict panel (scan check on Connect, schema summary + keys on Schema) */
+.chk { border: 1px solid var(--gridline); border-radius: 8px; padding: .8rem 1rem; margin-top: .8rem; font-size: .86rem; }
+.chk .chk-title { font-weight: 650; display: flex; align-items: center; gap: .45rem; }
+.chk.ok .chk-title { color: var(--status-good); }
+.chk.warn .chk-title { color: var(--status-warning); }
+.chk.bad .chk-title { color: var(--status-critical); }
+.chk .chk-rows { display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; margin-top: .45rem; color: var(--text-secondary); }
+.chk .chk-rows b { color: var(--text-muted); font-weight: 500; }
+.chk .chk-issue { margin-top: .5rem; padding: .45rem .7rem; border-radius: 6px; background: var(--surface-2); color: var(--text-secondary); }
+.chk .chk-issue.bad { border-left: 3px solid var(--status-critical); }
+.chk .chk-issue.warn { border-left: 3px solid var(--status-warning); }
+.chk .verdict { margin-top: .55rem; color: var(--text-primary); }
+
+/* PK/FK badges (column profiling on Connect, table cards + keys on Schema) */
+.key-badge {
+  flex: none; width: 24px; text-align: center; border-radius: 4px;
+  font-size: .62rem; font-weight: 700; letter-spacing: .03em; padding: .05rem 0;
+}
+.key-badge.pk { background: rgba(57, 135, 229, 0.18); color: var(--accent); }
+.key-badge.fk { background: rgba(12, 163, 12, 0.16); color: var(--status-good); }
+.key-badge.sp { visibility: hidden; }
+
+/* wide modal (table inspector on Schema, object preview on Files) */
+.modal.wide { width: min(940px, 100%); max-height: 90vh; }
+
+/* ---------- studio-only (PDI-AirFlow Migration Studio) ----------
+   Extends the suite stylesheet below the canonical sections, using
+   only the existing variables. */
+.dropzone{border:2px dashed var(--border);border-radius:var(--radius,10px);padding:34px 20px;text-align:center;cursor:pointer;background:var(--surface-2);transition:border-color .15s;margin-bottom:14px}
+.dropzone.over,.dropzone:hover{border-color:var(--accent)}
+.dropzone .dz-title{font-weight:700;font-size:14px}
+.dropzone .dz-hint{font-size:12px;opacity:.65;margin-top:4px}
+
+/* PDI Graph page — nested job/transformation/step viewer */
+.pg-wrap{position:relative}
+.pg-edges{position:absolute;inset:0;color:var(--accent);pointer-events:none}
+.pg-edge{fill:none;stroke:currentColor;stroke-width:1.6;opacity:.75}
+.pg-card{position:absolute;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius,10px);padding:8px 10px;box-sizing:border-box}
+.pg-head{display:flex;align-items:center;gap:6px;min-height:24px}
+.pg-name{font-weight:700;font-size:12.5px;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-caret{font-size:11px;opacity:.7}
+.pg-substate{font-size:10.5px;opacity:.6;margin-top:3px}
+.pg-steps{margin-top:8px;border-top:1px solid var(--border);padding-top:6px}
+.pg-steps-flat{border-top:none;padding-top:0;max-width:560px}
+.pg-step{display:flex;align-items:center;gap:7px;height:24px;font-size:12px}
+.pg-step-arrow{width:10px;text-align:center;opacity:.5;font-size:11px}
+.pg-step-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-step-type{opacity:.55;font-size:10.5px;margin-left:auto}

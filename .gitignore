@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.airflow/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Vite
+node_modules/
+
+# Editors
+.idea/
+.vscode/
+
+# Secrets & local config (never commit)
+.env
+webapp/settings.json
+
+# Generated / local artifacts
+nightly_etl.py
+*.openlineage.json
+_pdc_share/
