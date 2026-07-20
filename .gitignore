@@ -22,6 +22,8 @@ node_modules/
 webapp/settings.json
 
 # Generated / local artifacts
-nightly_etl.py
+# DAGs students generate and deploy during the workshop (Module 11) land
+# in deploy-target/; keep the folder (README + .gitkeep) but ignore deploys.
+workshop/dags/deploy-target/*.py
 *.openlineage.json
 _pdc_share/

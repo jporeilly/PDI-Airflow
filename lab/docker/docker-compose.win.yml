@@ -10,7 +10,9 @@
 # webserver + basic-auth REST API v1 and core operators, so the Studio
 # and pdi2dag talk to it with basic auth (they auto-detect v1 vs v2).
 #
-# DAGs: set DAGS_DIR in .env (default C:\PDI-Airflow\DAGS on Windows).
+# DAGs: set DAGS_DIR in .env (default C:\PDI-Airflow\DAGs on Windows).
+# That folder is scanned recursively, so workshop/, examples/ and
+# deploy-target/ under it all load.
 
 x-airflow-common: &airflow-common
   image: pdi-airflow-lab:2.10.5
@@ -23,7 +25,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__OPENLINEAGE__NAMESPACE: pdi
     AIRFLOW_CONN_PDI_DEFAULT: '{"conn_type":"pentaho","host":"http://${CARTE_HOST:-host.docker.internal}","port":${CARTE_PORT:-8081},"login":"${PDI_REPO_USER:-admin}","password":"${PDI_REPO_PASSWORD:-password}","extra":{"rep":"${PDI_REPO:-Default}","carte_username":"${CARTE_USER:-cluster}","carte_password":"${CARTE_PASSWORD:-cluster}"}}'
   volumes:
-    - ${DAGS_DIR:-C:/PDI-Airflow/DAGS}:/opt/airflow/dags
+    - ${DAGS_DIR:-C:/PDI-Airflow/DAGs}:/opt/airflow/dags
   extra_hosts:
     - "host.docker.internal:host-gateway"
   restart: unless-stopped

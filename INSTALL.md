@@ -60,8 +60,9 @@ cd C:\PDI-Airflow\lab\docker
 copy .env.example .env
 docker compose -f docker-compose.win.yml up -d --build
 ```
-- DAGs folder: `C:\PDI-Airflow\DAGS` (set `DAGS_DIR` in `.env`; the
-  Studio's *Dags folder* setting must match). REST API v1 (basic auth).
+- DAGs folder: `C:\PDI-Airflow\DAGs` (set `DAGS_DIR` in `.env`); the
+  Studio's *DAGs folder* setting points at its `deploy-target`
+  subfolder. REST API v1 (basic auth).
 
 **B — Ubuntu 24.04 VM, Airflow 3.3** (target — full guide:
 [lab/UBUNTU-SETUP.md](lab/UBUNTU-SETUP.md)):

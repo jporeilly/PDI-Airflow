@@ -208,13 +208,15 @@ Uses the migration app in this repo (see the root README).
    parameters → `PDI_PARAMS`, the MAIL entry flagged as a migration
    warning in the module docstring.
 
-3. Migrate for real — deploy into the lab's dags folder, unpause and
-   trigger via the REST API:
+3. Migrate for real — deploy into the lab's **`deploy-target/`** folder
+   (the landing zone for DAGs you generate, kept separate from the
+   pre-built `workshop/` and `examples/` DAGs), unpause and trigger via
+   the REST API:
 
    ```powershell
    pdi2dag migrate samples\nightly_etl.kjb --schedule "0 6 * * *" `
        --param "date={{ ds }}" --deferrable `
-       --dags-folder workshop\dags `
+       --dags-folder workshop\dags\deploy-target `
        --airflow-url http://localhost:8088 `
        --airflow-user admin --airflow-password admin --trigger
    ```

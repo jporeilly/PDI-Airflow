@@ -1,5 +1,28 @@
 # Changelog
 
+## PDI-AirFlow v1.13.0 - 2026-07-20
+
+- **Workshop DAGs split into three folders** under `workshop/dags/`
+  (scanned recursively by Airflow, so all still load):
+  `workshop/` (the module curriculum — `00_lineage_demo`, `01`–`10`),
+  `examples/` (standalone reference DAGs — `mini_job`), and
+  `deploy-target/` (empty landing zone where the Studio / `pdi2dag`
+  deploy generated DAGs in Module 11; generated `*.py` there are
+  git-ignored). The Studio's default *DAGs folder* now points at
+  `deploy-target/`, `scripts/deploy.ps1` mirrors the whole tree, and
+  Module 11 deploys with `--dags-folder …\deploy-target`. Spelling
+  normalised to **DAGs** throughout (folder `C:\PDI-Airflow\DAGs`).
+- **Carte / PDI connection test.** New `/api/carte/status` probes the
+  Carte server the deployed DAGs delegate to — `GET /kettle/status/?xml=Y`
+  behind basic auth (default `cluster`/`cluster`). HTTP 200 = connected,
+  401 = reachable but wrong credentials, else offline. Adds a **Carte /
+  PDI** group to Settings (URL / user / password) with a **Test
+  connection** button and a **Carte status dot** in the sidebar — so all
+  four services the Studio touches (Airflow, Carte/PDI, Marquez, PDC)
+  are now testable. Default `carte_url` is `http://localhost:8081`
+  because the Studio and Carte run on the same Windows box; the LAN IP
+  (`192.168.1.100`) is what Airflow on the VM uses to reach Carte.
+
 ## PDI-AirFlow v1.12.0 - 2026-07-20
 
 Migrates the lab to **Apache Airflow 3.3** (run in Linux Docker; the
@@ -50,13 +73,13 @@ status probe against it. Studio webapp → 1.12.0.
 - **Two documented options** (LAB-SETUP.md + INSTALL.md):
   - **A — Windows 11 / Airflow 2.10.5** via Docker Desktop
     (`docker-compose.win.yml` + `airflow2/Dockerfile`), REST API v1,
-    DAGs in `C:\PDI-Airflow\DAGS`.
+    DAGs in `C:\PDI-Airflow\DAGs`.
   - **B — Ubuntu 24.04 VM / Airflow 3.3** (`docker-compose.yml`),
     REST API v2/JWT, DAGs on the VM. The Studio's REST client
     auto-detects v1 vs v2, so one Studio drives either.
 - **Configurable DAGs folder**: `DAGS_DIR` in `lab/docker/.env`
   (default `../../workshop/dags`; Windows deploy uses
-  `C:\PDI-Airflow\DAGS`). `scripts/deploy.ps1` creates the DAGS folder,
+  `C:\PDI-Airflow\DAGs`). `scripts/deploy.ps1` creates the DAGs folder,
   seeds it with the workshop DAGs, and copies a runnable Studio to
   `C:\PDI-Airflow` (UI built, no venv/node_modules).
 - **Ubuntu 24.04 target**: `lab/UBUNTU-SETUP.md` + `lab/docker/

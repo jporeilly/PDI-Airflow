@@ -5,12 +5,17 @@ import { apiGet, apiPost } from './../api.js'
 // connection config; PDC and Airflow have a Test button.
 const GROUPS = [
   { title: 'Deployment', fields: [
-    ['dags_folder', 'Dags folder', 'C:\\PDI-Airflow\\workshop\\dags'],
+    ['dags_folder', 'DAGs folder', 'C:\\PDI-Airflow\\workshop\\dags\\deploy-target'],
   ] },
   { title: 'Apache Airflow', test: 'airflow', fields: [
     ['airflow_url', 'Airflow URL', 'http://localhost:8088'],
     ['airflow_user', 'Airflow user', 'admin'],
     ['airflow_password', 'Airflow password', ''],
+  ] },
+  { title: 'Carte / PDI', test: 'carte', fields: [
+    ['carte_url', 'Carte URL', 'http://localhost:8081'],
+    ['carte_user', 'Carte user', 'cluster'],
+    ['carte_password', 'Carte password', ''],
   ] },
   { title: 'Marquez', test: 'marquez', fields: [
     ['marquez_url', 'Marquez API URL', 'http://localhost:6001'],
@@ -69,14 +74,14 @@ export default function SettingsPage() {
     try {
       const s = await apiGet(`/api/${kind}/status`)
       let ok
-      if (kind === 'pdc') {
+      if (kind === 'pdc' || kind === 'carte') {
         ok = s.authenticated ? 'connected' : s.reachable ? 'reachable (check credentials)' : 'offline'
       } else if (kind === 'marquez') {
         ok = s.reachable ? `connected${s.namespace_count != null ? ` · ${s.namespace_count} namespaces` : ''}` : 'offline'
       } else {
         ok = s.reachable ? `connected${s.dag_count != null ? ` · ${s.dag_count} DAGs` : ''}` : 'offline'
       }
-      const good = kind === 'pdc' ? s.authenticated : s.reachable
+      const good = (kind === 'pdc' || kind === 'carte') ? s.authenticated : s.reachable
       setTests((t) => ({ ...t, [kind]: { busy: false, good, text: ok } }))
     } catch (e) {
       setTests((t) => ({ ...t, [kind]: { busy: false, good: false, text: e.message } }))

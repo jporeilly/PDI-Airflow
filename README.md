@@ -72,7 +72,7 @@ product path — see [course/COURSE-UPDATE.md](course/COURSE-UPDATE.md).
    .\.venv\Scripts\pdi2dag inspect samples\nightly_etl.kjb
    .\.venv\Scripts\pdi2dag migrate samples\nightly_etl.kjb `
        --schedule "0 6 * * *" --param "date={{ ds }}" `
-       --dags-folder workshop\dags `
+       --dags-folder workshop\dags\deploy-target `
        --airflow-url http://localhost:8088 `
        --airflow-user admin --airflow-password admin --trigger
    ```

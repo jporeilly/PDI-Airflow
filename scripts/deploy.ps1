@@ -38,14 +38,16 @@ robocopy $src $Dest /MIR `
 # robocopy exit codes 0-7 are success; 8+ are errors.
 if ($LASTEXITCODE -ge 8) { throw "robocopy failed ($LASTEXITCODE)" }
 
-# DAGs folder the Windows lab (Airflow 2.10) mounts and the Studio
-# deploys generated DAGs into. Seed it with the workshop DAGs.
-$dags = Join-Path $Dest 'DAGS'
-New-Item -ItemType Directory -Force $dags | Out-Null
-Copy-Item (Join-Path $Dest 'workshop\dags\*') $dags -Force -ErrorAction SilentlyContinue
+# DAGs folder the Windows lab (Airflow 2.10) mounts. Seed it with the
+# whole workshop tree (workshop/ + examples/ + deploy-target/) so the
+# example DAGs load and the Studio has a deploy-target/ to deploy into.
+$dags = Join-Path $Dest 'DAGs'
+$target = Join-Path $dags 'deploy-target'
+New-Item -ItemType Directory -Force $target | Out-Null
+Copy-Item (Join-Path $Dest 'workshop\dags\*') $dags -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host ""
 Write-Host "  Deployed to $Dest  (DAGs folder: $dags)" -ForegroundColor Green
 Write-Host "  Run the Studio:   cd $Dest ; .\run.ps1 -NoBuild"
 Write-Host "  Windows lab:      cd $Dest\lab\docker ; docker compose -f docker-compose.win.yml up -d --build"
-Write-Host "  In the Studio Settings, set Dags folder = $dags"
+Write-Host "  In the Studio Settings, set DAGs folder = $target"

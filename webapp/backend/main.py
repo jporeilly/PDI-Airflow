@@ -57,7 +57,11 @@ DEFAULT_SETTINGS = {
     'airflow_url': 'http://localhost:8088',
     'airflow_user': 'admin',
     'airflow_password': 'admin',
-    'dags_folder': str(ROOT.parent / 'workshop' / 'dags'),
+    'dags_folder': str(
+        ROOT.parent / 'workshop' / 'dags' / 'deploy-target'),
+    'carte_url': 'http://localhost:8081',
+    'carte_user': 'cluster',
+    'carte_password': 'cluster',
     'marquez_url': 'http://localhost:6001',
     'marquez_web_url': 'http://localhost:3000',
     'marquez_namespace': 'pdi',
@@ -76,7 +80,8 @@ TAGS = [
     {'name': 'lineage', 'description':
         'Publish PDI structure to Marquez as OpenLineage events.'},
     {'name': 'services', 'description':
-        'Connected services (Airflow, Marquez) and studio settings.'},
+        'Connected services (Airflow, Carte/PDI, Marquez, PDC) and '
+        'studio settings.'},
 ]
 
 app = FastAPI(
@@ -164,6 +169,9 @@ class SettingsModel(BaseModel):
     airflow_user: Optional[str] = None
     airflow_password: Optional[str] = None
     dags_folder: Optional[str] = None
+    carte_url: Optional[str] = None
+    carte_user: Optional[str] = None
+    carte_password: Optional[str] = None
     marquez_url: Optional[str] = None
     marquez_web_url: Optional[str] = None
     marquez_namespace: Optional[str] = None
@@ -552,6 +560,31 @@ def pdc_status():
                 authenticated = True
             except Exception:  # noqa: BLE001 - status probe only
                 authenticated = False
+    return {'reachable': reachable, 'authenticated': authenticated,
+            'url': url}
+
+
+@app.get('/api/carte/status', tags=['services'],
+         summary='Carte / PDI reachability and auth')
+def carte_status():
+    """Probes the Carte server the deployed DAGs delegate to. Carte's
+    server-wide status lives at ``/kettle/status/?xml=Y`` behind basic
+    auth (default cluster/cluster). HTTP 200 = reachable + authed; 401 =
+    reachable but wrong credentials."""
+    settings = load_settings()
+    url = (settings.get('carte_url') or '').rstrip('/')
+    reachable, authenticated = False, False
+    if url:
+        try:
+            rs = requests.get(
+                url + '/kettle/status/?xml=Y',
+                auth=(settings.get('carte_user') or '',
+                      settings.get('carte_password') or ''),
+                timeout=5)
+            reachable = rs.status_code < 500
+            authenticated = rs.status_code == 200
+        except requests.RequestException:
+            reachable, authenticated = False, False
     return {'reachable': reachable, 'authenticated': authenticated,
             'url': url}
 

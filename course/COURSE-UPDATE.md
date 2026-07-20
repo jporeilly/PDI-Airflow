@@ -65,6 +65,6 @@ flowchart LR
 | `load-testing.py` | `load_testing.py` | Parallel fan-out of 3 jobs + 1 transformation through the provider. |
 | `hello-world.py` | (module 1 of the workshop covers this) | `m01_carte_trans_basic` is the equivalent. |
 
-Drop the modernized DAGs into the lab's dags folder (or copy them to
-`workshop/dags/`) to run them; they use the course-derived repository
-content mounted into the containerized Carte.
+Drop the modernized DAGs into the lab's DAGs folder (or copy them to
+`workshop/dags/deploy-target/`) to run them; they use the
+course-derived repository content mounted into the containerized Carte.

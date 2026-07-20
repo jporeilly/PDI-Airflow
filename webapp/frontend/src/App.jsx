@@ -101,6 +101,7 @@ export default function App() {
   const [page, setPage] = useState('home')
   const [version, setVersion] = useState('')
   const [airflow, setAirflow] = useState(null)
+  const [carte, setCarte] = useState(null)
   const [marquez, setMarquez] = useState(null)
   const [pdc, setPdc] = useState(null)
   const ws = useStudio()
@@ -117,6 +118,9 @@ export default function App() {
       apiGet('/api/airflow/status')
         .then((s) => { if (!stop) setAirflow(s) })
         .catch(() => { if (!stop) setAirflow(null) })
+      apiGet('/api/carte/status')
+        .then((s) => { if (!stop) setCarte(s) })
+        .catch(() => { if (!stop) setCarte(null) })
       apiGet('/api/marquez/status')
         .then((s) => { if (!stop) setMarquez(s) })
         .catch(() => { if (!stop) setMarquez(null) })
@@ -175,6 +179,12 @@ export default function App() {
             {airflow?.reachable
               ? <>Airflow · <a href={airflow.url} target="_blank" rel="noreferrer">connected</a></>
               : 'Airflow · offline'}
+          </div>
+          <div className="conn">
+            <span className={`dot ${carte?.reachable ? (carte?.authenticated ? 'ok' : 'warn') : 'warn'}`} />
+            {carte?.reachable
+              ? <>Carte · <a href={carte.url} target="_blank" rel="noreferrer">{carte.authenticated ? 'connected' : 'reachable'}</a></>
+              : 'Carte · offline'}
           </div>
           <div className="conn">
             <span className={`dot ${marquez?.reachable ? 'ok' : 'warn'}`} />

@@ -13,12 +13,13 @@ Airflow version.
 | Runs on | Windows Docker Desktop | Ubuntu Docker Engine |
 | Compose | `docker-compose.win.yml` | `docker-compose.yml` |
 | REST API | v1 (basic auth) | v2 (JWT) — client auto-detects |
-| DAGs folder | `C:\PDI-Airflow\DAGS` | a path on the VM |
+| DAGs folder | `C:\PDI-Airflow\DAGs` | a path on the VM |
 | Carte | `host.docker.internal` (same box) | `CARTE_HOST` = the Windows IP |
 | Studio + Carte | on the same Windows box | on Windows, connects over LAN |
 
 - **Option A** — everything on one Windows machine; the Studio deploys
-  DAGs into `C:\PDI-Airflow\DAGS`, which the Windows lab mounts. Start:
+  DAGs into `C:\PDI-Airflow\DAGs\deploy-target`, which the Windows lab
+  mounts (via its parent `DAGs` folder). Start:
   ```powershell
   cd lab\docker
   docker compose -f docker-compose.win.yml up -d --build
@@ -198,7 +199,7 @@ Migrate the bundled sample job and hand it to the running Airflow:
 .\.venv\Scripts\pdi2dag migrate samples\nightly_etl.kjb `
     --schedule "0 6 * * *" `
     --param "date={{ ds }}" `
-    --dags-folder workshop\dags `
+    --dags-folder workshop\dags\deploy-target `
     --airflow-url http://localhost:8088 `
     --airflow-user admin --airflow-password admin `
     --trigger
