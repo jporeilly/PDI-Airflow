@@ -30,7 +30,7 @@ observability.*
 
 ## Module 1 — Your first Carte task (15 min)
 
-DAG: [dags/01_carte_trans_basic.py](dags/01_carte_trans_basic.py)
+DAG: [dags/workshop/01_carte_trans_basic.py](dags/workshop/01_carte_trans_basic.py)
 
 1. Unpause `m01_carte_trans_basic` and press ▶ (Trigger).
 2. Open the task log. You'll see the Carte submission
@@ -46,7 +46,7 @@ port, repo name, Carte credentials.
 
 ## Module 2 — Scheduling a Carte job (15 min)
 
-DAG: [dags/02_carte_job_scheduled.py](dags/02_carte_job_scheduled.py)
+DAG: [dags/workshop/02_carte_job_scheduled.py](dags/workshop/02_carte_job_scheduled.py)
 
 1. Read the DAG: `schedule='30 6 * * *'`, `catchup=False`, retries
    with delay.
@@ -80,7 +80,7 @@ No new DAG — edit `m02`:
 
 ## Module 4 — Parameters & templating (20 min)
 
-DAG: [dags/04_params_templating.py](dags/04_params_templating.py)
+DAG: [dags/workshop/04_params_templating.py](dags/workshop/04_params_templating.py)
 
 PDI *named parameters* map 1:1 to the operator's `params` dict, and
 Airflow renders Jinja templates in it first:
@@ -99,7 +99,7 @@ Template toolbox: `{{ ds }}` (interval date), `{{ data_interval_start
 
 ## Module 5 — Multi-transformation pipelines (25 min)
 
-DAG: [dags/05_pipeline_dependencies.py](dags/05_pipeline_dependencies.py)
+DAG: [dags/workshop/05_pipeline_dependencies.py](dags/workshop/05_pipeline_dependencies.py)
 
 This is the PDI-job-as-DAG pattern: what you'd draw as hops in a .kjb
 becomes explicit, observable task dependencies.
@@ -119,7 +119,7 @@ single task), and per-entry lineage in Marquez.
 
 ## Module 6 — Local execution: Kitchen & Pan (15 min)
 
-DAG: [dags/06_kitchen_pan_local.py](dags/06_kitchen_pan_local.py)
+DAG: [dags/workshop/06_kitchen_pan_local.py](dags/workshop/06_kitchen_pan_local.py)
 (read-through if your workers have no PDI installed)
 
 - `PanOperator`/`KitchenOperator` build a `pan.sh`/`kitchen.sh`
@@ -132,7 +132,7 @@ DAG: [dags/06_kitchen_pan_local.py](dags/06_kitchen_pan_local.py)
 
 ## Module 7 — Deferrable mode (20 min)
 
-DAG: [dags/07_deferrable_carte.py](dags/07_deferrable_carte.py)
+DAG: [dags/workshop/07_deferrable_carte.py](dags/workshop/07_deferrable_carte.py)
 
 1. Trigger `m07_deferrable_carte` (uses the `long_running_job` with a
    Wait step).
@@ -147,7 +147,7 @@ and not — always set `deferrable=True` for long Carte executions.
 
 ## Module 8 — Failure handling (20 min)
 
-DAG: [dags/08_failure_handling.py](dags/08_failure_handling.py)
+DAG: [dags/workshop/08_failure_handling.py](dags/workshop/08_failure_handling.py)
 
 Covers the full failure toolkit around a Carte load:
 
@@ -164,7 +164,7 @@ Covers the full failure toolkit around a Carte load:
 
 ## Module 9 — Data-aware scheduling (Datasets) (20 min)
 
-DAG: [dags/09_dataset_scheduling.py](dags/09_dataset_scheduling.py)
+DAG: [dags/workshop/09_dataset_scheduling.py](dags/workshop/09_dataset_scheduling.py)
 
 1. `m09a_dataset_producer` declares
    `outlets=[Dataset('warehouse://staging/sales')]` on the staging
@@ -178,7 +178,7 @@ subscribe to *data being ready*, not to a time of day.
 
 ## Module 10 — Dynamic task mapping (15 min)
 
-DAG: [dags/10_dynamic_mapping.py](dags/10_dynamic_mapping.py)
+DAG: [dags/workshop/10_dynamic_mapping.py](dags/workshop/10_dynamic_mapping.py)
 
 `list_partitions()` returns one dict per region at runtime and
 `CarteTransOperator.partial(...).expand(params=...)` creates one Carte

@@ -8,7 +8,7 @@ workloads on **Apache Airflow / Astronomer**, with lineage in
 |---|---|---|
 | Provider | Modernized Airflow provider (Carte + Kitchen/Pan operators, deferrable support) | [airflow-pentaho-provider/](airflow-pentaho-provider/) |
 | Workshop | 12-module hands-on workshop: every PDI scheduling scenario on Airflow | [workshop/WORKSHOP.md](workshop/WORKSHOP.md) + [workshop/dags/](workshop/dags/) |
-| Lab | Docker stack — **Airflow 3.3** + Marquez. Windows/host: [lab/LAB-SETUP.md](lab/LAB-SETUP.md) · **Ubuntu 24.04 VM**: [lab/UBUNTU-SETUP.md](lab/UBUNTU-SETUP.md) |
+| Lab | Docker stack — **Airflow 2.10.5 (Windows)** / **3.3 (Ubuntu VM)** + Marquez. Windows/host: [lab/LAB-SETUP.md](lab/LAB-SETUP.md) · **Ubuntu 24.04 VM**: [lab/UBUNTU-SETUP.md](lab/UBUNTU-SETUP.md) |
 | Migration app (CLI) | `pdi2dag` — convert .ktr/.kjb into scheduled Airflow DAGs | [pdi2dag/](pdi2dag/) |
 | Migration Studio (web) | React (Vite) + FastAPI app over pdi2dag — PDC-suite design | [webapp/](webapp/) |
 | Course companion | Updates for the "How-To: Apache Airflow" self-paced course | [course/COURSE-UPDATE.md](course/COURSE-UPDATE.md) |

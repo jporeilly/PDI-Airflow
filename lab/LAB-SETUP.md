@@ -45,11 +45,11 @@ Apache Airflow, with data lineage visible in Marquez:
 │                                                                  │
 │  PDI (Spoon + Carte :8081)      Docker Desktop                   │
 │  File repository "Default"   ┌─────────────────────────────────┐ │
-│  at C:\PDI-Repo              │ Airflow (standalone) :8088      │ │
+│  at C:\PDI-Repo              │ Airflow (3 services) :8088      │ │
 │            ▲                 │   airflow-provider-pentaho      │ │
 │            │ Carte REST      │   openlineage provider          │ │
 │            └─────────────────│                                 │ │
-│         host.docker.internal │ Marquez API :5000 / UI :3000    │ │
+│         host.docker.internal │ Marquez API :6001 / UI :3000    │ │
 │                              └─────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -66,10 +66,30 @@ Apache Airflow, with data lineage visible in Marquez:
 
 ## Part 1 — PDI and the file repository
 
-1. **Install PDI** (unzip pdi-ce or run the EE installer), e.g. to
-   `C:\Pentaho\data-integration`. Verify `Spoon.bat` starts.
+1. **Install PDI** and verify `Spoon.bat` starts. The Pentaho-suite
+   installer puts it at `C:\Pentaho\design-tools\data-integration`; a CE
+   zip unzips to wherever you extract it (e.g. `C:\Pentaho\data-integration`).
+   Use *your* path in the commands below.
 
-2. **Create the repository folder**: `mkdir C:\PDI-Repo`.
+   > **EE only:** Carte needs a valid Pentaho license or transformations
+   > fail to run (the Carte log prints `License validated.` when it's in
+   > place). Apply it once with the license installer:
+   >
+   > ```powershell
+   > cd C:\Pentaho\design-tools\data-integration
+   > .\install_license.bat install C:\path\to\your-license.lic
+   > ```
+
+2. **Create the repository folder and seed it** with the ready-made
+   content so `/home/bi/hello_world` (Module 1) works immediately:
+
+   ```powershell
+   mkdir C:\PDI-Repo
+   xcopy /E /I C:\Projects\PDI-AirFlow\lab\carte\repository\* C:\PDI-Repo\
+   ```
+
+   You can add the other transformations/jobs (step 5) in Spoon as you
+   reach the modules that use them.
 
 3. **Register the repository**: copy
    [carte/repositories.xml](carte/repositories.xml) to
@@ -83,11 +103,10 @@ Apache Airflow, with data lineage visible in Marquez:
    repository (the lab uses `admin`/`password` to match the Airflow
    connection).
 
-5. **Create the workshop content** in the repository (folder
-   `/home/bi`):
+5. **Create the remaining workshop content** in the repository (folder
+   `/home/bi`). `hello_world` is already seeded by step 2; add these as
+   you reach the modules that need them:
 
-   - `hello_world` (transformation): Generate Rows (limit 10, one
-     String field `message` = `Hello from Airflow`) → Write to Log.
    - `extract_sales`, `extract_customers`, `load_warehouse`,
      `load_sales` (transformations): same pattern — Generate Rows →
      Write to Log is enough for the lab; add a named parameter `date`
@@ -136,9 +155,26 @@ Apache Airflow, with data lineage visible in Marquez:
    `data-integration\pwd\kettle.pwd` for anything non-lab). You
    should see the slave server status page.
 
-4. **Firewall**: if Windows Defender prompts, allow Java on private
-   networks — the Airflow container connects in via
-   `host.docker.internal`.
+4. **Firewall** — required for the **Ubuntu VM topology (Option B)**,
+   where Airflow runs on another machine and reaches Carte over the LAN.
+   Windows Firewall blocks inbound 8081 by default, and if your LAN is
+   classified **Public** a *Private*-only rule won't apply — so open it
+   for all profiles, in an **elevated** PowerShell:
+
+   ```powershell
+   New-NetFirewallRule -DisplayName "Carte 8081 (lab)" -Direction Inbound `
+     -Protocol TCP -LocalPort 8081 -Action Allow -Profile Any
+   ```
+
+   Verify from the VM (replace with the Windows machine's LAN IP):
+
+   ```bash
+   curl -u cluster:cluster http://192.168.1.100:8081/kettle/status/?xml=Y
+   ```
+
+   A `<serverstatus>` back = the hop is open. For **Option A** (Docker
+   Desktop on the same Windows box) the container reaches Carte via
+   `host.docker.internal` and usually needs no rule.
 
 ### Configuring Carte with Airflow (single / custom port / cluster)
 
@@ -228,11 +264,13 @@ docker compose exec airflow-scheduler airflow connections add pdi_edge \
    - **bakes** the **Pentaho provider** + **OpenLineage provider** into
      the image (`airflow/Dockerfile`), so boots are fast and never
      pip-install at runtime;
-   - mounts `workshop/dags` as the dags folder;
+   - mounts the DAGs folder (`DAGS_DIR`) — the Ubuntu compose defaults
+     to `workshop/dags`, the Windows compose to `C:\PDI-Airflow\DAGs`;
    - pre-creates the `pdi_default` connection pointing at
-     `host.docker.internal:8081` (env var `AIRFLOW_CONN_PDI_DEFAULT`);
+     `host.docker.internal:8081` (env var `AIRFLOW_CONN_PDI_DEFAULT`),
+     plus a DB-seeded `pdi_cluster` connection for the cluster topology;
    - configures OpenLineage to POST lineage events to Marquez;
-   - runs Marquez (API :5000, UI :3000).
+   - runs Marquez (API :6001, UI :3000).
 
 3. **Log in to Airflow**: http://localhost:8088 — `admin` / `admin`.
    Under Admin → Providers you should see `airflow-provider-pentaho`;
@@ -294,7 +332,7 @@ Set the connection in `.env` (same `AIRFLOW_CONN_PDI_DEFAULT` value as
 the compose file) and `astro dev start`. Marquez still runs from
 `lab/docker` (comment out the airflow/airflow-db services or run
 `docker compose up -d marquez-db marquez-api marquez-web`), with the
-OpenLineage transport URL `http://host.docker.internal:5000`.
+OpenLineage transport URL `http://host.docker.internal:6001`.
 
 ## Troubleshooting
 
@@ -307,4 +345,4 @@ OpenLineage transport URL `http://host.docker.internal:5000`.
 | DAG not appearing | It only parses if the provider import works: `docker compose exec airflow airflow dags list-import-errors`. |
 | No lineage in Marquez | Check `docker compose logs airflow` for `openlineage` errors and that the transport URL uses `marquez-api:5000`. |
 | Scheduler/UI-triggered task fails fast (log stops at `Pre Execute`), scheduler shows `SIGKILL` / `Workload execution failed`, but `airflow tasks test <dag> <task>` succeeds | Python 3.12+/3.13 fork-deadlock: the OpenLineage listener deadlocks in the forked worker ([airflow#47160](https://github.com/apache/airflow/issues/47160)). Fixed on the 3.3 VM by `AIRFLOW__CORE__EXECUTE_TASKS_NEW_PYTHON_INTERPRETER=true` (in `docker-compose.yml`); `docker compose up -d` to apply. |
-| Deferrable task stuck in `deferred` | Triggerer must be running — `standalone` includes it; on custom setups run `airflow triggerer`. |
+| Deferrable task stuck in `deferred` | Triggerer must be running — the lab's `airflow-triggerer` service provides it; on custom setups run `airflow triggerer`. |

@@ -53,7 +53,7 @@ Airflow always runs in **Linux containers** (never native Windows).
 Two deployment options — see the table in
 [lab/LAB-SETUP.md](lab/LAB-SETUP.md):
 
-**A — Windows 11, Airflow 2.10** (Docker Desktop, dev):
+**A — Windows 11, Airflow 2.10.5** (Docker Desktop, dev):
 
 ```powershell
 cd C:\PDI-Airflow\lab\docker

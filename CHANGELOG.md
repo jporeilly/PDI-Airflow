@@ -1,5 +1,28 @@
 # Changelog
 
+## PDI-AirFlow v1.15.2 - 2026-07-20
+
+Documentation + lab-content pass so the workshop runs clean end-to-end
+(no webapp code change — Migration Studio stays 1.14.0).
+
+- **`hello_world` transformation now ships in the repo**
+  (`lab/carte/repository/home/bi/hello_world.ktr`) — workshop Module 1
+  works out of the box. LAB-SETUP / `repositories.xml` seed it with
+  `xcopy … C:\PDI-Repo\` instead of hand-authoring in Spoon.
+- **LAB-SETUP.md Carte setup rewritten** with what a real run needs:
+  the EE **license** step (`install_license.bat`), the correct PDI path
+  (`C:\Pentaho\design-tools\data-integration`), and the actual
+  **firewall rule** for the VM topology (`New-NetFirewallRule …
+  -Profile Any` — `-Profile Private` silently fails on Public LANs),
+  with VM-side `curl` verification.
+- **WORKSHOP.md**: fixed the 9 module DAG links to `dags/workshop/…`
+  after the three-folder reorg.
+- **Doc consistency sweep** (audit): Marquez **host** API port shown as
+  `:6001` (not the internal `:5000`) in the topology diagram, the
+  Astronomer transport URL, and the Part-3 summary; "Airflow
+  (standalone)" → the three-service reality; "Airflow 2.10" → "2.10.5"
+  precision in VERSION/INSTALL/README.
+
 ## PDI-AirFlow v1.15.1 - 2026-07-20
 
 - **Fix: scheduler/UI-triggered Carte tasks were SIGKILLed on the

@@ -7,8 +7,13 @@
    Linux: ~/.kettle/repositories.xml) or merge it into an existing
   repositories.xml.
 
-  Create the base directory first, e.g. C:\PDI-Repo, then create the
-  folder /home/bi inside it from Spoon (or as plain directories).
+  Create the base directory first, e.g. C:\PDI-Repo, then seed it with
+  the ready-made content shipped alongside this file:
+
+    mkdir C:\PDI-Repo
+    xcopy /E /I C:\Projects\PDI-AirFlow\lab\carte\repository\* C:\PDI-Repo\
+
+  That gives you /home/bi/hello_world (workshop Module 1) immediately.
 -->
 <repositories>
   <repository>
