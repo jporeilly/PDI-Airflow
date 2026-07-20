@@ -58,9 +58,9 @@ produces a real, executable, migratable `.ktr`.
 1. Connect Spoon to the **`Default`** repository (`C:\PDI-Airflow\pipelines`).
 2. New transformation. Drag a **Table Input** (connection `cscu-core`):
    ```sql
-   SELECT txn_id, acct_id, txn_dt, txn_amt, merch_nm, mcc_cd
+   SELECT txn_id, acct_id, txn_dt, post_dt, txn_amt, merch_nm, mcc_cd
    FROM cscu_core.transactions
-   WHERE post_dt >= '2026-07-01'
+   WHERE post_dt >= '2026-06-01'
    ```
 3. Drag a **Write to Log** (log the fields) - a read-only demo needs no
    writable mart. *(For the full member-360 mart, add a `Table Output` to

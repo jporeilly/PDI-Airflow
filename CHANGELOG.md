@@ -1,5 +1,13 @@
 # Changelog
 
+## PDI-AirFlow v1.20.4 - 2026-07-20
+
+- **CSCU: default transaction date corrected to the sample data.** The
+  `since_dt` filter (capstone Module 0 SQL, `extract_transactions.ktr` +
+  `cscu_daily_load.kjb` param defaults) now uses `2026-06-01` - the
+  `cscu_core.transactions` sample data is June, so `2026-07-01` returned
+  no rows. Added `post_dt` to the sample SELECT to match.
+
 ## PDI-AirFlow v1.20.3 - 2026-07-20
 
 - **Capstone reframed around the real workflow: build in PDI -> migrate

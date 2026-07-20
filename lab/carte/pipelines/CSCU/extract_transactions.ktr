@@ -5,7 +5,7 @@
     <description>Extract recent posted transactions from the Copper State Credit Union core banking database into the mart staging area.</description>
     <directory>/CSCU</directory>
     <parameters>
-      <parameter><name>since_dt</name><default_value>2026-07-01</default_value></parameter>
+      <parameter><name>since_dt</name><default_value>2026-06-01</default_value></parameter>
     </parameters>
   </info>
   <connection>
@@ -30,7 +30,7 @@
     <name>Read Transactions</name>
     <type>TableInput</type>
     <connection>cscu-core</connection>
-    <sql>SELECT txn_id, acct_id, txn_dt, post_dt, txn_amt, txn_type_cd, merch_nm, mcc_cd
+    <sql>SELECT txn_id, acct_id, txn_dt, post_dt, txn_amt, merch_nm, mcc_cd
 FROM cscu_core.transactions
 WHERE post_dt &gt;= '${since_dt}'</sql>
   </step>

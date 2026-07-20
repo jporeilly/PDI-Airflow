@@ -4,7 +4,7 @@
   <description>Copper State Credit Union nightly load: extract posted transactions to staging, then rebuild the member 360 mart. Emails on failure.</description>
   <directory>/CSCU</directory>
   <parameters>
-    <parameter><name>since_dt</name><default_value>2026-07-01</default_value></parameter>
+    <parameter><name>since_dt</name><default_value>2026-06-01</default_value></parameter>
   </parameters>
   <entries>
     <entry><name>Start</name><type>SPECIAL</type><start>Y</start></entry>
