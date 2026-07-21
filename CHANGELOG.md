@@ -1,5 +1,24 @@
 # Changelog
 
+## PDI-AirFlow v1.28.0 - 2026-07-21
+
+- **The Marquez step graph now carries Carte row counts too.** It was
+  building datasets with a bare `{namespace, name}` helper, so the
+  counts were never in those events at all - a correction to the
+  previous claim that Marquez "renders them". `_run_events` takes
+  optional `rows_in`/`rows_out` (defaults keep every existing caller
+  byte-identical), and `build_trans_model_events` /
+  `build_job_model_events` thread `step_metrics` through. Each step edge
+  now reports what it actually moved: `cscu_transactions` out 17,
+  `Write to log` 17 in / 17 out, `Text file output` 17 in / 17 out.
+
+  **Where the numbers are visible, honestly:** Marquez stores them
+  (`dataQualityMetrics` appears on the dataset versions via the API) but
+  neither Marquez's graph view nor PDC's lineage panel puts a row count
+  on screen in the checks made here. They are reliably readable from
+  both event stores over the API. Treat the reconciliation as an
+  API-level or side-by-side check, not something either UI displays.
+
 ## PDI-AirFlow v1.27.2 - 2026-07-21
 
 - **Documented which row count is which.** The *Statistics* panel on a

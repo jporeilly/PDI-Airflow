@@ -510,7 +510,8 @@ def lineage_publish(body: LineagePublishRequest):
                 step_metrics=metrics))
         else:
             events.extend(build_job_model_events(
-                doc, namespace=ns, trans_details=trans_details))
+                doc, namespace=ns, trans_details=trans_details,
+                step_metrics=metrics))
         jobs += len(doc.executable_entries)
         for entry in doc.executable_entries:
             trans_name = (entry.path or '').split('/')[-1]
@@ -530,7 +531,9 @@ def lineage_publish(body: LineagePublishRequest):
                     server_name=settings.get('pdi_server', 'pdi2dag'),
                     step_metrics=metrics.get(name)))
             else:
-                events.extend(build_trans_model_events(detail, namespace=ns))
+                events.extend(build_trans_model_events(
+                    detail, namespace=ns,
+                    step_metrics=metrics.get(name)))
             steps += len(detail.steps)
 
     if body.target == 'file':

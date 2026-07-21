@@ -140,8 +140,13 @@ def _job_facets(description, job_type):
 
 
 def _run_events(namespace, job_name, inputs, outputs, description,
-                job_type, event_time=None):
-    """A START/COMPLETE pair describing one job with its edges."""
+                job_type, event_time=None, rows_in=None, rows_out=None):
+    """A START/COMPLETE pair describing one job with its edges.
+
+    ``rows_in`` / ``rows_out`` attach real Carte counts to the edges.
+    Left as None the datasets stay bare ``{namespace, name}``, so
+    callers without metrics are unaffected.
+    """
     start = event_time or datetime.now(timezone.utc)
     base = {
         'producer': PRODUCER,
@@ -152,8 +157,8 @@ def _run_events(namespace, job_name, inputs, outputs, description,
             'name': job_name,
             'facets': _job_facets(description, job_type),
         },
-        'inputs': [_dataset(namespace, n) for n in inputs],
-        'outputs': [_dataset(namespace, n) for n in outputs],
+        'inputs': [_input_dataset(namespace, n, rows_in) for n in inputs],
+        'outputs': [_output_dataset(namespace, n, rows_out) for n in outputs],
     }
     return [
         dict(base, eventType='START', eventTime=start.isoformat()),
@@ -162,7 +167,8 @@ def _run_events(namespace, job_name, inputs, outputs, description,
     ]
 
 
-def build_job_model_events(doc, namespace='pdi', trans_details=None):
+def build_job_model_events(doc, namespace='pdi', trans_details=None,
+                           step_metrics=None):
     """Entry-level lineage for a parsed .kjb document.
 
     One OpenLineage job per TRANS/JOB entry, connected through
@@ -203,7 +209,8 @@ def build_job_model_events(doc, namespace='pdi', trans_details=None):
                 entry.entry_type))
             events.extend(build_trans_model_events(
                 detail, namespace=namespace,
-                entry_input=start_ds, exit_output=result_ds))
+                entry_input=start_ds, exit_output=result_ds,
+                step_metrics=(step_metrics or {}).get(trans_name)))
         else:
             events.extend(_run_events(
                 namespace, job_name, inputs, [result_ds], description,
@@ -212,7 +219,8 @@ def build_job_model_events(doc, namespace='pdi', trans_details=None):
 
 
 def build_trans_model_events(detail, namespace='pdi', prefix=None,
-                             entry_input=None, exit_output=None):
+                             entry_input=None, exit_output=None,
+                             step_metrics=None):
     """Step-level lineage for a parsed .ktr (PdiTransDetail).
 
     One OpenLineage job per step; each hop becomes a dataset edge
@@ -222,6 +230,10 @@ def build_trans_model_events(detail, namespace='pdi', prefix=None,
     surrounding job graph: first steps (no upstream hop) additionally
     read ``entry_input``; terminal steps (no downstream hop)
     additionally write ``exit_output``.
+
+    ``step_metrics`` (from :func:`parse_carte_step_metrics`) puts the
+    real Carte counts on the edges, so the graph shows how many rows
+    each step actually moved rather than only which steps connect.
     """
     upstream = {}
     has_downstream = set()
@@ -244,8 +256,13 @@ def build_trans_model_events(detail, namespace='pdi', prefix=None,
             outputs.append(exit_output)
         description = "PDI step '{}' (type {}) in transformation " \
             "'{}'".format(step.name, step.step_type, detail.name)
+        m = (step_metrics or {}).get(step.name) or {}
+        # 'written' is what the step emitted downstream, 'read' what it
+        # consumed from upstream. A source step legitimately reads 0 -
+        # it pulls from the database, not across a hop.
         events.extend(_run_events(
-            namespace, job_name, inputs, outputs, description, 'STEP'))
+            namespace, job_name, inputs, outputs, description, 'STEP',
+            rows_in=m.get('read'), rows_out=m.get('written')))
     return events
 
 
