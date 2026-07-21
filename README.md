@@ -20,27 +20,7 @@ Install on Windows in one step: `.\install.ps1` (see [INSTALL.md](INSTALL.md)).
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    KJB[".kjb / .ktr<br/>PDI repository files"]
-    subgraph studio["Migration Studio (webapp :5012)"]
-        FE["React + Vite UI"] --> BE["FastAPI backend"]
-        BE --> CORE["pdi2dag core<br/>parser · generator · deployer<br/>OpenLineage emitter"]
-    end
-    subgraph docker["Docker lab"]
-        AF["Apache Airflow :8088<br/>airflow-provider-pentaho<br/>+ OpenLineage provider"]
-        MQ["Marquez<br/>UI :3000 · API :6001"]
-        CARTE["Carte :8081<br/>(host or --profile carte)"]
-    end
-    PDC["Pentaho Data Catalog<br/>ETL Pipelines · lineage<br/>(/lineage/api/events)"]
-    KJB --> FE
-    CORE -- "DAG file + REST<br/>(unpause, trigger)" --> AF
-    AF -- "Carte REST<br/>executeJob / executeTrans" --> CARTE
-    CARTE -. "transStatus<br/>step row counts" .-> CORE
-    AF -- "task OpenLineage<br/>(orchestration)" --> MQ
-    CORE -- "PDI OpenLineage<br/>tables + row counts" --> PDC
-    CORE -- "structure + steps" --> MQ
-```
+<img width="1009" height="389" alt="image" src="https://github.com/user-attachments/assets/4d92e3ba-615b-4256-8d90-c356c29d005a" />
 
 **Two lineage producers, three destinations:** Airflow's OpenLineage
 provider emits *task-level* orchestration lineage to Marquez; the
