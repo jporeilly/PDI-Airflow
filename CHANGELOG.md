@@ -1,5 +1,19 @@
 # Changelog
 
+## PDI-AirFlow v1.31.1 - 2026-07-21
+
+- **Documented that PDC lineage is append-only.** Deleting events does
+  **not** retract graph edges: PDC materialises the graph as events
+  arrive and stores it apart from the event log, and the lineage
+  service exposes only `/api/events` and `/api/status` - there is no
+  graph API to withdraw an edge with. Renaming `txn_report`'s output to
+  `txn_extract` therefore left *both* files in the graph permanently,
+  and clearing every stale event did not remove the old one.
+
+  Practical consequence for the workshop: settle output paths **before**
+  publishing, and verify a cleanup against the **graph**, not the event
+  store - they are different stores and only one of them can be edited.
+
 ## PDI-AirFlow v1.31.0 - 2026-07-21
 
 Four hardening changes, each aimed at a way this app has actually

@@ -191,6 +191,12 @@ produces a real, executable, migratable `.ktr`.
    after it, writing to `C:/PDI-Airflow/output/txn_extract` (extension `csv`,
    *Create parent folder* on).
 
+   > **Get the output path right first - lineage is append-only.**
+   > PDC materialises its graph as events arrive and keeps it separate
+   > from the event log. Deleting events does **not** remove an edge,
+   > and there is no API to retract one, so every rename leaves its old
+   > path in the graph forever alongside the new one.
+
    > **Name the output differently from the transformation.** Calling
    > both `txn_report` makes the lineage graph read as *"txn_report is
    > downstream of the database"*, when the node is the **file**, not
