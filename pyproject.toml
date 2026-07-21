@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdi2dag"
-version = "1.22.0"
+version = "1.22.1"
 description = "Migrate Pentaho Data Integration jobs and transformations to scheduled Apache Airflow DAGs."
 readme = "README.md"
 license = { text = "Apache-2.0" }

@@ -1,5 +1,24 @@
 # Changelog
 
+## PDI-AirFlow v1.22.1 - 2026-07-21
+
+**Every long-running lab service now has `restart: always`.** Only the
+`airflow-common` anchor carried a policy, so the app containers came back
+after a reboot while `airflow-db`, `marquez-db`, `marquez-api` and
+`marquez-web` - which had **no policy at all** - stayed down. The result
+looks healthy but is not: scheduler/triggerer/dag-processor "running"
+with a dead metadata database behind them, the api-server stuck on
+*starting*, and `marquez-api` dying 137.
+
+- Added to `airflow-db`, `marquez-db`, `marquez-api`, `marquez-web` and
+  the optional `carte` service, in both the Ubuntu and Windows compose
+  files.
+- Anchor moved `unless-stopped` -> `always`: `unless-stopped` does *not*
+  bring a container back after a daemon restart if it had been stopped
+  first, which is the exact case here.
+- `airflow-init` deliberately stays `on-failure` - it is one-shot, and
+  `always` would restart it forever.
+
 ## PDI-AirFlow v1.22.0 - 2026-07-21
 
 **Repository path is now a first-class field in the Studio.** Files are

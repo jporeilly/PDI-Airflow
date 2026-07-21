@@ -28,12 +28,13 @@ x-airflow-common: &airflow-common
     - ${DAGS_DIR:-C:/PDI-Airflow/DAGs}:/opt/airflow/dags
   extra_hosts:
     - "host.docker.internal:host-gateway"
-  restart: unless-stopped
+  restart: always
 
 services:
 
   airflow-db:
     image: postgres:16
+    restart: always
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -103,6 +104,7 @@ services:
 
   marquez-db:
     image: postgres:14
+    restart: always
     environment:
       POSTGRES_USER: marquez
       POSTGRES_PASSWORD: marquez
@@ -116,6 +118,7 @@ services:
 
   marquez-api:
     image: marquezproject/marquez:0.50.0
+    restart: always
     depends_on:
       marquez-db:
         condition: service_healthy
@@ -133,6 +136,7 @@ services:
 
   marquez-web:
     image: marquezproject/marquez-web:0.50.0
+    restart: always
     depends_on:
       - marquez-api
     environment:

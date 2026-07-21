@@ -17,8 +17,14 @@
 #
 # Airflow 3.3 runs in Linux containers as separate api-server /
 # scheduler / triggerer / dag-processor services (not `standalone`),
-# each restart: unless-stopped — a crashed process exits its container
-# and Docker restarts it. The Pentaho provider + OpenLineage/standard/
+# each restart: always — a crashed process exits its container and
+# Docker restarts it, and `always` (unlike `unless-stopped`) also brings
+# them back after a host reboot or docker daemon restart even if they
+# were stopped beforehand. Every long-running service carries it,
+# databases included: a policy on the app containers alone leaves them
+# up with a dead metadata DB behind them. `airflow-init` is the sole
+# exception - it is one-shot, so it stays on-failure; `always` would
+# restart it forever. The Pentaho provider + OpenLineage/standard/
 # fab providers are baked into the image (airflow/Dockerfile), so boots
 # are fast and never pip-install at runtime. Windows (the Studio /
 # pdi2dag) connects over the REST API v2 (JWT) — Airflow itself never
@@ -57,12 +63,13 @@ x-airflow-common: &airflow-common
     - ${DAGS_DIR:-../../workshop/dags}:/opt/airflow/dags
   extra_hosts:
     - "host.docker.internal:host-gateway"
-  restart: unless-stopped
+  restart: always
 
 services:
 
   airflow-db:
     image: postgres:16
+    restart: always
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -151,6 +158,7 @@ services:
   carte:
     build: ./carte
     profiles: ["carte"]
+    restart: always
     ports:
       - "8081:8181"
     environment:
@@ -161,6 +169,7 @@ services:
 
   marquez-db:
     image: postgres:14
+    restart: always
     environment:
       POSTGRES_USER: marquez
       POSTGRES_PASSWORD: marquez
@@ -174,6 +183,7 @@ services:
 
   marquez-api:
     image: marquezproject/marquez:0.50.0
+    restart: always
     depends_on:
       marquez-db:
         condition: service_healthy
@@ -192,6 +202,7 @@ services:
 
   marquez-web:
     image: marquezproject/marquez-web:0.50.0
+    restart: always
     depends_on:
       - marquez-api
     environment:
