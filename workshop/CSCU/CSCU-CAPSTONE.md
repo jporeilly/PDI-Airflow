@@ -26,7 +26,7 @@ flowchart TD
 
     subgraph build["2 - Build the pipeline (PDI / Spoon)"]
         B1["Table Input<br/>cscu_core.transactions"]
-        B2["Text file input<br/>s3://cscu-documents/feeds/"]
+        B2["Text file input<br/>pvfs://cscu-minio/cscu-documents/feeds/"]
         B3["Write to Log<br/>/ Table Output"]
         B1 --> B3
         B2 --> B3
@@ -68,7 +68,7 @@ land on.
   | `extract_transactions.ktr` | `cscu_core.transactions` -> `staging.txn_stg` |
   | `build_member_mart.ktr` | members x branches x accounts x transactions -> `mart.member_360` |
   | `import_ach_csv.ktr` | ACH CSV (local) -> `staging.ach_stg` |
-  | `import_ach_minio.ktr` | ACH from MinIO `s3://cscu-documents` -> `staging.ach_stg` |
+  | `import_ach_minio.ktr` | ACH from MinIO `pvfs://cscu-minio/cscu-documents` -> `staging.ach_stg` |
   | `cscu_daily_load.kjb` | `extract_transactions` -> `build_member_mart` |
 
 - **What you run live** — a transformation **you build in Spoon** (below).
@@ -273,22 +273,40 @@ to `cscu-documents/feeds/` (MinIO console `:9001`, or
    | Default S3 Connection | ✅ (so plain `s3://…` URLs route through this endpoint) |
    | Root Folder Path | `/` |
 
-   > **Gotcha:** the Signature Version field wants the AWS SDK **signer
+   > **Gotcha 1:** the Signature Version field wants the AWS SDK **signer
    > type** `AWSS3V4SignerType` - **not** the algorithm string
    > `AWS4-HMAC-SHA256`, which fails with
-   > `IllegalArgumentException: unknown signer type`. With *Default S3
-   > Connection* checked, the `s3://cscu-documents/…` path in
-   > `import_ach_minio.ktr` works unchanged and the lineage stays clean.
+   > `IllegalArgumentException: unknown signer type`.
+
+   > **Gotcha 2 - address the connection explicitly.** *Default S3
+   > Connection* makes a plain `s3://cscu-documents/…` URL work **in
+   > Spoon**, but it does **not** route through the named connection on
+   > **Carte** - the path resolves to nothing. Use the explicit,
+   > connection-scoped form instead:
+   >
+   > ```
+   > pvfs://cscu-minio/cscu-documents/feeds/
+   > ```
+   >
+   > `pvfs://<connection-name>/<bucket>/<path>` names the connection in
+   > the URL, so it behaves the same in Spoon and on the server. This is
+   > the form the shipped `ingest_from_minio.ktr` uses.
 
 2. **Build it in Spoon** (as in Module 0) - `/CSCU/ingest_from_minio`:
 
    - **Text file input** reads a **whole folder**: set *File/Directory* to
-     `s3://cscu-documents/feeds/` and *Wildcard (RegExp)* to `.*\.csv`,
-     then **Add**. Every matching object is picked up - you do **not**
+     `pvfs://cscu-minio/cscu-documents/feeds/` and *Wildcard (RegExp)*
+     to `.*\.csv`, then **Add**. Every matching object is picked up - you do **not**
      enter files one by one, and tomorrow's drop is included automatically.
      (**CSV file input** is single-file and faster; use it when you want
      exactly one object, or feed it filenames from a **Get File Names**
      step.)
+   - On the **Content** tab set *Format* to **mixed**. `DOS` hard-fails
+     on Unix line endings with *"DOS format was specified but only a
+     single line feed character was found"*; `mixed` accepts either.
+   - Leave *File required* **checked**. Unchecked, an unresolvable path
+     matches zero files and the transformation reports **Finished with 0
+     rows and no error** - a green run that did nothing.
    - **Get Fields** to read the header (`ach_id, acct_id, ach_rte_no,
      ext_acct_no, dir_cd, ach_amt, eff_dt, ach_status, return_cd`).
    - **Write to Log** (or `Table Output` to a writable `cscu-mart`), hop,

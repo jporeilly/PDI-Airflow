@@ -1,5 +1,30 @@
 # Changelog
 
+## PDI-AirFlow v1.21.2 - 2026-07-21
+
+Got the MinIO ingestion actually working - `ingest_from_minio` now reads
+**20 rows** from `cscu-documents/feeds/ach_payments_2026.csv`. Three
+separate faults were stacked behind one silent green run.
+
+- **Use `pvfs://<connection>/<bucket>/<path>`, not plain `s3://`.** The
+  *Default S3 Connection* flag routes a bare `s3://` URL in **Spoon** but
+  **not on Carte** - the path resolved to nothing. The explicit
+  connection-scoped `pvfs://` form names the connection in the URL and
+  behaves identically in both. `ingest_from_minio.ktr` and
+  `import_ach_minio.ktr` updated; the capstone previously claimed the
+  `s3://` form "works unchanged", which was wrong.
+- **Content format `DOS` -> `mixed`.** The CSV has Unix LF endings, so
+  the step failed with *"DOS format was specified but only a single line
+  feed character was found, not 2"*. `mixed` accepts either.
+- **`file_required` N -> Y.** With it off, an unresolvable path matches
+  zero files and Carte reports **Finished, 0 rows, no error** - which is
+  what masked all of the above.
+- **New `scripts/carte_run.py`.** Identifies a run by *diffing* run-ids
+  around the execute call, because `executeTrans` does not reliably
+  return one and `transname` is not unique - "take the newest by name"
+  silently reports on a previous run. Polls to completion, prints
+  per-step row counts, and exits non-zero on a zero-row run.
+
 ## PDI-AirFlow v1.21.1 - 2026-07-21
 
 Two launcher fixes found while getting the first live CSCU run working.
