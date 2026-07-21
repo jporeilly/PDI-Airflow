@@ -164,6 +164,13 @@ class PdiFile(BaseModel):
     """A PDI file passed by content - nothing is stored server-side."""
     filename: str = Field(examples=['nightly_etl.kjb'])
     content: str = Field(description='Raw XML of the .kjb/.ktr file')
+    repo_path: str = Field(
+        '', description="Repository path Carte should run, e.g. "
+                        "/CSCU/txn_report. Files are uploaded by content, so "
+                        "the folder is not knowable from the upload and the "
+                        "file's own <directory> is often stale - set this "
+                        "when the object does not live at the repo root.",
+        examples=['/CSCU/txn_report'])
 
 
 class ConvertOptionsModel(BaseModel):
@@ -313,7 +320,7 @@ def browse_folder():
 
 # --------------------------------------------------------- pdi routes
 
-def _parse_content(filename, content):
+def _parse_content(filename, content, repo_path=''):
     suffix = os.path.splitext(filename or 'file.kjb')[1] or '.kjb'
     fd, tmp = tempfile.mkstemp(suffix=suffix)
     try:
@@ -323,6 +330,15 @@ def _parse_content(filename, content):
     finally:
         os.unlink(tmp)
     doc.source_file = filename
+    # The upload carries no folder, so an object in /CSCU parses as if it
+    # were at the repo root and Carte would fail to find it. An explicit
+    # repo_path is the only reliable source of truth here.
+    if repo_path:
+        clean = '/' + repo_path.strip('/')
+        directory, _, name = clean.rpartition('/')
+        doc.directory = directory or '/'
+        if name:
+            doc.name = name
     return doc
 
 
@@ -349,7 +365,8 @@ def inspect(body: PdiFile):
     jobs) and hops. Step-level detail is used by lineage publishing,
     not by this endpoint."""
     try:
-        doc = _parse_content(body.filename, body.content)
+        doc = _parse_content(body.filename, body.content,
+                             getattr(body, 'repo_path', ''))
     except ValueError as e:
         return _err(str(e))
     return {
@@ -379,7 +396,8 @@ def convert_route(body: ConvertRequest):
     dependencies); transformations become a single Carte task. Review
     the returned warnings - they are the migration TODO list."""
     try:
-        doc = _parse_content(body.filename, body.content)
+        doc = _parse_content(body.filename, body.content,
+                             getattr(body, 'repo_path', ''))
     except ValueError as e:
         return _err(str(e))
     o = body.options

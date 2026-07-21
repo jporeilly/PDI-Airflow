@@ -80,6 +80,11 @@ def _add_convert_args(parser):
                         help='DAG start date YYYY-MM-DD (default: today)')
     parser.add_argument('--level', default='Basic',
                         help='PDI logging level (default Basic)')
+    parser.add_argument('--repo-path', default=None,
+                        help='Repository path Carte should run, e.g. '
+                             '/CSCU/txn_report. Default: inferred from where '
+                             "the file sits in the repository (the .ktr's "
+                             '<directory> is often stale)')
 
 
 def _options_from_args(args):
@@ -143,8 +148,20 @@ def cmd_inspect(args):
     return 0
 
 
+def _apply_repo_path(doc, args):
+    """Honour an explicit --repo-path override."""
+    override = getattr(args, 'repo_path', None)
+    if override:
+        override = '/' + override.strip('/')
+        doc.directory, _, name = override.rpartition('/')
+        doc.directory = doc.directory or '/'
+        if name:
+            doc.name = name
+    return doc
+
+
 def cmd_convert(args):
-    doc = parse_file(args.file)
+    doc = _apply_repo_path(parse_file(args.file), args)
     result = convert(doc, _options_from_args(args))
     out_file = _write_dag(result, args.output)
     print('Generated {} (dag_id: {})'.format(out_file, result.dag_id))
@@ -153,7 +170,7 @@ def cmd_convert(args):
 
 
 def cmd_migrate(args):
-    doc = parse_file(args.file)
+    doc = _apply_repo_path(parse_file(args.file), args)
     result = convert(doc, _options_from_args(args))
 
     dag_file = _write_dag(result, args.dags_folder)

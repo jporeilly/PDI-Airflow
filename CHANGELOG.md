@@ -1,5 +1,30 @@
 # Changelog
 
+## PDI-AirFlow v1.22.0 - 2026-07-21
+
+**Repository path is now a first-class field in the Studio.** Files are
+uploaded by *content*, so the folder an object lives in was never
+knowable server-side - a transformation in `/CSCU` parsed as if it sat at
+the repository root and the generated DAG emitted
+`trans='/txn_report'`, which Carte cannot find. The `.ktr`'s own
+`<directory>` is no help: Spoon leaves it `/` even for objects saved in a
+subfolder.
+
+- **Load page**: new editable **Repo path** column per file, seeded from
+  the parsed document and correctable before generating.
+- **API**: `PdiFile`/`ConvertRequest` accept `repo_path`; `/api/inspect`
+  and `/api/convert` honour it.
+- **CLI**: matching `--repo-path` on `convert` and `migrate`.
+
+Verified end to end in the app: dropping `txn_report.ktr`, setting
+`/CSCU/txn_report`, and generating produces
+`trans='/CSCU/txn_report'` - the path proven to run on Carte.
+
+> Deliberately **not** inferred by walking up the filesystem for a
+> `.kettle` marker. That was tried and reverted: callers parse a temp
+> copy, so the walk found the user's home `.kettle` and produced
+> `/Local/Temp/txn_report`. An explicit path is the only honest source.
+
 ## PDI-AirFlow v1.21.2 - 2026-07-21
 
 Got the MinIO ingestion actually working - `ingest_from_minio` now reads

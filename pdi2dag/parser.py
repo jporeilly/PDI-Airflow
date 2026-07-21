@@ -317,7 +317,33 @@ def parse_trans_detail(path):
     return detail
 
 
-def parse_file(path):
+def infer_directory(source_file, repo_base):
+    """Repository directory for a PDI file, relative to the repo root.
+
+    Spoon does not always record a usable ``<directory>`` - a file saved
+    at the repository root and later moved into ``/CSCU`` still says
+    ``/``. Carte resolves by the path handed to ``executeTrans``, so the
+    on-disk location is what matters.
+
+    ``repo_base`` must be given explicitly (the repository's
+    ``base_directory``). Do NOT try to guess it by walking up looking for
+    a ``.kettle`` folder: callers routinely parse a copy in a temp dir,
+    and the walk then finds the user's home ``.kettle`` and invents a
+    path like ``/Local/Temp/txn_report``. Returns None when it cannot be
+    determined, leaving the parsed value alone.
+    """
+    if not repo_base:
+        return None
+    base = repo_base
+    rel = os.path.relpath(os.path.dirname(os.path.abspath(str(source_file))),
+                          base)
+    if rel.startswith('..'):
+        return None
+    rel = rel.replace(os.sep, '/').strip('/')
+    return '/' + rel if rel and rel != '.' else '/'
+
+
+def parse_file(path, repo_base=None):
     """Parse a .kjb or .ktr file into a :class:`PdiDocument`."""
     try:
         tree = ET.parse(path)
@@ -326,9 +352,17 @@ def parse_file(path):
 
     root = tree.getroot()
     if root.tag == 'job':
-        return _parse_job(root, str(path))
-    if root.tag == 'transformation':
-        return _parse_trans(root, str(path))
-    raise ValueError(
-        "Unsupported PDI file {}: root element is <{}>, expected <job> "
-        'or <transformation>'.format(path, root.tag))
+        doc = _parse_job(root, str(path))
+    elif root.tag == 'transformation':
+        doc = _parse_trans(root, str(path))
+    else:
+        raise ValueError(
+            "Unsupported PDI file {}: root element is <{}>, expected <job> "
+            'or <transformation>'.format(path, root.tag))
+
+    # Trust the filesystem over a stale <directory>, but only when the
+    # file really is inside a repository - a loose .ktr keeps its own.
+    inferred = infer_directory(path, repo_base)
+    if inferred and inferred != doc.directory:
+        doc.directory = inferred
+    return doc

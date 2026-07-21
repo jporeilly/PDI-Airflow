@@ -7,7 +7,7 @@
 import { useSyncExternalStore } from 'react'
 
 const state = {
-  files: [],        // {id, filename, content, doc, error}
+  files: [],        // {id, filename, content, doc, error, repoPath}
   options: {
     schedule: '',
     conn_id: 'pdi_default',
@@ -76,7 +76,7 @@ export function addFile(filename, content) {
   // Re-dropping a file replaces the previous copy
   state.files = state.files
     .filter((f) => f.filename !== filename)
-    .concat({ id, filename, content, doc: null, error: '' })
+    .concat({ id, filename, content, doc: null, error: '', repoPath: '' })
   state.results = []
   state.deployed = null
   state.lineage = null
@@ -85,8 +85,13 @@ export function addFile(filename, content) {
 }
 
 export function setFileDoc(id, doc, error = '') {
+  // Seed the repo path from the parsed document. Uploads carry no
+  // folder, so this is only a starting point - the user corrects it for
+  // anything not at the repository root (e.g. /CSCU/txn_report).
   state.files = state.files.map((f) =>
-    f.id === id ? { ...f, doc, error } : f)
+    f.id === id
+      ? { ...f, doc, error, repoPath: f.repoPath || doc?.repo_path || '' }
+      : f)
   if (doc?.parameters?.length) {
     const params = { ...state.options.params }
     for (const p of doc.parameters) {
@@ -94,6 +99,13 @@ export function setFileDoc(id, doc, error = '') {
     }
     state.options = { ...state.options, params }
   }
+  commit()
+}
+
+export function setFileRepoPath(id, repoPath) {
+  state.files = state.files.map((f) =>
+    f.id === id ? { ...f, repoPath } : f)
+  state.results = []
   commit()
 }
 

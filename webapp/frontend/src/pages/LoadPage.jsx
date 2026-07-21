@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { apiPost } from './../api.js'
 import {
   addFile, clearFiles, loadedTransNames, removeFile, requiredTransNames,
-  rootFiles, setFileDoc, useStudio,
+  rootFiles, setFileDoc, setFileRepoPath, useStudio,
 } from './../state.js'
 
 // Load PDI files — drag & drop (or browse), batch-aware. Jobs list the
@@ -85,7 +85,7 @@ export default function LoadPage({ onNavigate }) {
             <table>
               <thead>
                 <tr>
-                  <th>File</th><th>Kind</th><th>Becomes</th>
+                  <th>File</th><th>Kind</th><th>Repo path</th><th>Becomes</th>
                   <th>Required transformations</th><th></th>
                 </tr>
               </thead>
@@ -102,6 +102,22 @@ export default function LoadPage({ onNavigate }) {
                           : f.doc
                             ? f.doc.kind
                             : <span className="badge neutral">…</span>}
+                      </td>
+                      <td>
+                        {f.doc && (
+                          <input
+                            className="mono"
+                            style={{ width: '100%', minWidth: 160 }}
+                            value={f.repoPath}
+                            spellCheck={false}
+                            placeholder="/CSCU/txn_report"
+                            title={'Repository path Carte will run. Uploads '
+                                 + 'carry no folder, so set this for anything '
+                                 + 'not at the repository root.'}
+                            onChange={(e) =>
+                              setFileRepoPath(f.id, e.target.value)}
+                          />
+                        )}
                       </td>
                       <td>
                         {f.doc && (isRoot

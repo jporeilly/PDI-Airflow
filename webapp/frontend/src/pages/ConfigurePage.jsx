@@ -58,6 +58,7 @@ export default function ConfigurePage({ onNavigate }) {
         const result = await apiPost('/api/convert', {
           filename: f.filename,
           content: f.content,
+          repo_path: f.repoPath || '',
           options: o,
         })
         results.push({ filename: f.filename, ...result })
