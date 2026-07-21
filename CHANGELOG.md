@@ -1,5 +1,25 @@
 # Changelog
 
+## PDI-AirFlow v1.26.0 - 2026-07-21
+
+**PostgreSQL datasets used the wrong namespace scheme: `postgresql://`
+instead of `postgres://`.** PDC's own lineage panel showed the answer -
+the catalogued table sits at `postgres://192.168.1.200:5433`
+`cscu_core.cscu_core.transactions`, while we emitted an otherwise
+*identical* dataset under `postgresql://`. Same name, different
+namespace, so PDC stored ours as a separate node and never joined it to
+the real table. Nothing looked broken at any point: the events were
+accepted, well-formed, and simply landed beside the asset instead of on
+it.
+
+`postgres` is also what the OpenLineage dataset-naming spec prescribes,
+so this was wrong on both counts. Fixed in `_DB_SCHEME` (and the
+matching `_DEFAULT_PORT` key).
+
+The lesson worth keeping: a lineage namespace is an **identity**, not a
+label. It has to match what the catalog already holds, character for
+character, or the graph silently forks.
+
 ## PDI-AirFlow v1.25.1 - 2026-07-21
 
 - **`txn_report` now writes a real dataset**, so it produces a complete

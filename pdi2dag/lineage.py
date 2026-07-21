@@ -277,8 +277,14 @@ def _pdi_job_facets(job_type):
 # --- database dataset naming (matches what PDC ingests: it creates a
 # data source <TYPE>-<host>-<schema> and TABLE entities from these) ---
 
+# Dataset namespace schemes, per the OpenLineage dataset naming spec.
+# These MUST match what the catalog already holds or the lineage lands
+# on a second, disconnected node: PDC catalogues PostgreSQL as
+# `postgres://host:port`, so emitting `postgresql://` produced a
+# lookalike dataset with the identical name that was never linked to the
+# real table.
 _DB_SCHEME = {
-    'POSTGRESQL': 'postgresql', 'POSTGRES': 'postgresql',
+    'POSTGRESQL': 'postgres', 'POSTGRES': 'postgres',
     'MYSQL': 'mysql', 'MARIADB': 'mysql',
     'ORACLE': 'oracle', 'MSSQL': 'sqlserver',
     'MSSQLNATIVE': 'sqlserver', 'SQLSERVER': 'sqlserver',
@@ -286,7 +292,7 @@ _DB_SCHEME = {
     'GENERIC': 'jdbc',
 }
 _DEFAULT_PORT = {
-    'postgresql': '5432', 'mysql': '3306', 'oracle': '1521',
+    'postgres': '5432', 'mysql': '3306', 'oracle': '1521',
     'sqlserver': '1433', 'vertica': '5433',
 }
 
