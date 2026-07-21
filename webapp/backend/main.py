@@ -56,7 +56,8 @@ from pdi2dag.lineage import (_input_dataset, build_job_model_events,
                              build_pdc_trans_events,
                              build_trans_model_events, emit, emit_pdc,
                              lineage_warnings, resolve_server_name,
-                             trans_datasets)
+                             trans_datasets, unmatched_datasets,
+                             verify_pdc_events)
 from pdi2dag.reconcile import pdc_table_row_counts, reconcile_inputs
 from pdi2dag.parser import (default_shared_xml, parse_file,
                             parse_shared_connections,
@@ -396,6 +397,36 @@ def _carte_metrics(trans_names, settings):
     return out
 
 
+def _pdc_known_namespaces(settings):
+    """Dataset namespaces the PDC catalog actually uses.
+
+    Built from the registered data sources, so a published dataset can
+    be checked against what the catalog will match on.
+    """
+    from pdi2dag.lineage import _DB_SCHEME, _pdc_token
+    base = (settings.get('pdc_url') or '').rstrip('/')
+    token = _pdc_token(base, settings.get('pdc_user'),
+                       settings.get('pdc_password'), verify_tls=False)
+    rs = requests.post(base + '/api/public/v2/data-sources/filter',
+                       json={'filters': {'resourceNames': ['*']}},
+                       headers={'Authorization': 'Bearer ' + token,
+                                'Content-Type': 'application/json'},
+                       verify=False, timeout=30)
+    rs.raise_for_status()
+    out = set()
+    for src in rs.json().get('data') or []:
+        db_type = (src.get('databaseType') or '').upper()
+        host, port = src.get('host'), src.get('port')
+        scheme = _DB_SCHEME.get(db_type)
+        if scheme and host:
+            out.add('{}://{}:{}'.format(scheme, host, port) if port
+                    else '{}://{}'.format(scheme, host))
+        # Object stores are addressed by bucket, not host.
+        if src.get('container'):
+            out.add('s3://{}'.format(src['container']))
+    return out
+
+
 def _pdc_table_entities(settings):
     """Every TABLE entity PDC knows, with its profiling stats."""
     from pdi2dag.lineage import _pdc_token
@@ -522,6 +553,7 @@ def lineage_publish(body: LineagePublishRequest):
                                  settings.get('carte_url'))
 
     events, jobs, steps = [], 0, 0
+    verified, orphans = None, []
     referenced = set()
     for doc in job_docs:
         if body.target in ('pdc', 'file'):
@@ -573,6 +605,19 @@ def lineage_publish(body: LineagePublishRequest):
                             'first')
             emit_pdc(events, settings['pdc_url'],
                      settings['pdc_user'], settings['pdc_password'])
+            # PDC returns 200 for events it builds nothing from, so the
+            # POST proves nothing. Read them back.
+            verified = verify_pdc_events(
+                events, settings['pdc_url'], settings['pdc_user'],
+                settings['pdc_password'])
+            # And flag datasets whose namespace matches nothing the
+            # catalog holds - accepted, stored, and attached to a node
+            # that never joins the graph.
+            try:
+                known = {ns for ns in _pdc_known_namespaces(settings)}
+                orphans = unmatched_datasets(events, known)
+            except (RuntimeError, requests.RequestException):
+                orphans = []
         else:
             emit(events, settings['marquez_url'])
     except (RuntimeError, requests.RequestException) as e:
@@ -582,9 +627,20 @@ def lineage_publish(body: LineagePublishRequest):
     warnings = []
     for detail in trans_details.values():
         warnings.extend(lineage_warnings(detail))
+    for o in orphans:
+        warnings.append(
+            "dataset '{}' has namespace '{}', which matches no data "
+            'source in PDC - the lineage will be stored but will not '
+            'attach to a catalogued asset'.format(o['name'],
+                                                  o['namespace']))
+    if verified and verified['missing']:
+        warnings.append(
+            '{} of {} events were accepted but are not in the PDC event '
+            'store'.format(len(verified['missing']), verified['sent']))
     return {'events': len(events), 'jobs': jobs, 'steps': steps,
             'namespace': ns, 'target': body.target,
             'metrics_from_carte': sorted(metrics),
+            'verified': verified,
             'warnings': warnings}
 
 
@@ -849,6 +905,95 @@ def pdc_status():
     return {'reachable': reachable, 'authenticated': authenticated,
             'lineage_ok': lineage_ok, 'lineage_detail': lineage_detail,
             'url': url}
+
+
+@app.post('/api/carte/runs', tags=['services'],
+          summary='Latest Carte run per transformation')
+def carte_runs(body: LineagePublishRequest):
+    """What each transformation actually did on its last Carte run.
+
+    Closes the loop: after migrating you would otherwise leave the app
+    to find out whether anything worked. Row counts here are the same
+    numbers the lineage carries.
+    """
+    if not body.files:
+        return _err('No files supplied')
+    settings = load_settings()
+    url = (settings.get('carte_url') or '').rstrip('/')
+    if not url:
+        return _err('Set carte_url under Settings first')
+    from requests.auth import HTTPBasicAuth
+    from pdi2dag.carte import fetch_step_metrics, latest_run_id
+    auth = HTTPBasicAuth(settings.get('carte_user', ''),
+                         settings.get('carte_password', ''))
+    out = []
+    for f in body.files:
+        if f.filename.lower().endswith('.kjb'):
+            continue
+        try:
+            detail = _parse_trans_content(f.filename, f.content, settings)
+        except ValueError as e:
+            return _err('{}: {}'.format(f.filename, e))
+        entry = {'transformation': detail.name,
+                 'repo_path': getattr(f, 'repo_path', '') or '',
+                 'run_id': None, 'steps': [], 'errors': 0,
+                 'error': ''}
+        try:
+            entry['run_id'] = latest_run_id(url, detail.name, auth=auth)
+            metrics = fetch_step_metrics(url, detail.name, auth=auth)
+        except (requests.RequestException, ValueError,
+                ET.ParseError) as e:
+            entry['error'] = str(e)[:200]
+            out.append(entry)
+            continue
+        # Keep the .ktr's step order - Carte's response order is not
+        # the pipeline order and reads as scrambled.
+        for step in detail.steps:
+            m = metrics.get(step.name)
+            if not m:
+                continue
+            entry['steps'].append({
+                'name': step.name, 'type': step.step_type,
+                'read': m['read'], 'written': m['written'],
+                'input': m['input'], 'output': m['output'],
+                'errors': m['errors']})
+            entry['errors'] += m['errors']
+        out.append(entry)
+    return {'runs': out, 'carte_url': url}
+
+
+@app.get('/api/deploy/preflight', tags=['jobs'],
+         summary='Will a deploy actually reach this Airflow?')
+def deploy_preflight():
+    """Whether writing to ``dags_folder`` delivers to the configured
+    Airflow, or only writes a local file.
+
+    Airflow reads DAGs from its **own** filesystem. When it runs on
+    another host, writing to a local Windows folder does not deliver
+    anything - the file still has to travel (git, a share, a copy), and
+    the UI showing ``C:\... -> http://vm:8088`` invites the assumption
+    that one action did both.
+    """
+    settings = load_settings()
+    folder = settings.get('dags_folder') or ''
+    airflow_host = (urlsplit(settings.get('airflow_url') or '').hostname
+                    or '')
+    local = airflow_host.lower() in ('localhost', '127.0.0.1', '::1', '')
+    exists = bool(folder) and os.path.isdir(folder)
+    return {
+        'dags_folder': folder,
+        'folder_exists': exists,
+        'airflow_host': airflow_host,
+        'airflow_is_local': local,
+        # host.docker.internal means containers on THIS machine, which
+        # can mount a local folder - still same-machine delivery.
+        'delivers': local or airflow_host == 'host.docker.internal',
+        'note': ('Writing here delivers to Airflow.' if local else
+                 'Airflow runs on {}, which cannot see this Windows '
+                 'folder. The DAG is written locally - deliver it to '
+                 'the Airflow host (git pull, share or copy) before it '
+                 'will appear.'.format(airflow_host)),
+    }
 
 
 @app.get('/api/carte/status', tags=['services'],

@@ -17,8 +17,11 @@ export default function DeployPage({ onNavigate }) {
   const [lineageBusy, setLineageBusy] = useState(false)
   const [lineageError, setLineageError] = useState('')
 
+  const [preflight, setPreflight] = useState(null)
+
   useEffect(() => {
     apiGet('/api/settings').then(setSettings).catch(() => {})
+    apiGet('/api/deploy/preflight').then(setPreflight).catch(() => {})
   }, [])
 
   const hasFiles = ws.files.some((f) => f.doc)
@@ -92,6 +95,21 @@ export default function DeployPage({ onNavigate }) {
         <p className="psub">
           Target: {settings ? `${settings.dags_folder} → ${settings.airflow_url}` : '…'}
           {'  '}(change under Settings)
+        </p>
+        {preflight && !preflight.delivers && (
+          <p className="hint-line">
+            <span className="badge warning">writes locally</span>{' '}
+            {preflight.note}
+          </p>
+        )}
+        {preflight && preflight.delivers && !preflight.folder_exists && (
+          <p className="hint-line">
+            <span className="badge warning">missing folder</span>{' '}
+            <span className="mono">{preflight.dags_folder}</span> does
+            not exist yet — it will be created on deploy.
+          </p>
+        )}
+        <p className="psub" style={{ display: 'none' }}>
         </p>
       </div>
 

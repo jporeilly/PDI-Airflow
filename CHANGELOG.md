@@ -1,5 +1,38 @@
 # Changelog
 
+## PDI-AirFlow v1.31.0 - 2026-07-21
+
+Four hardening changes, each aimed at a way this app has actually
+misled someone today.
+
+**1. Contract tests for the emitter** (`tests/test_pdc_emitter.py`, 26
+tests; suite now 74). Every assertion corresponds to a bug that reached
+a live PDC and was found by hand: `postgres://` vs `postgresql://`,
+`database.schema.table` naming, `pvfs://` unwrapping, producer
+consistency in *both* builders, shared-connection resolution, and that a
+file output reports rows **written** (17) not `linesOutput` (18, which
+counts the header). Two fixes shipped today with a green suite because
+nothing asserted on the wire format.
+
+**2. Publish now verifies instead of trusting HTTP 200.** PDC accepts
+events it builds nothing from, so `verify_pdc_events()` reads them back
+and reports `sent / confirmed / missing`, walking pages rather than
+trusting one response. `unmatched_datasets()` additionally flags any
+dataset whose namespace matches no registered PDC data source - exactly
+the `postgresql://` failure, which was accepted, stored, well-formed and
+invisible.
+
+**3. Deploy states the machine boundary.** `GET /api/deploy/preflight`
+detects that `dags_folder` is a local Windows path while Airflow runs
+elsewhere, and the page now says so: *"Airflow runs on 192.168.1.200,
+which cannot see this Windows folder."* Previously it rendered
+`C:\... -> http://vm:8088` as though one action did both.
+
+**4. New Carte runs view** (*Observe -> Carte runs*). The latest run per
+transformation with per-step read/written/input/output/errors - the same
+numbers the lineage carries. Steps are listed in the `.ktr`'s order,
+since Carte's response order is not the pipeline order.
+
 ## PDI-AirFlow v1.30.2 - 2026-07-21
 
 - **Renamed `txn_report`'s output to `txn_extract.csv`.** Naming the

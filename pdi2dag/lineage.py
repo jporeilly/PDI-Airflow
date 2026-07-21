@@ -651,6 +651,70 @@ def build_pdc_trans_events(detail, repo_path, namespace=None,
     ]
 
 
+
+def verify_pdc_events(events, base_url, username, password,
+                      verify_tls=False, timeout=30, pages=20):
+    """Read published events back out of PDC and confirm they stored.
+
+    PDC answers **200 for events it can build nothing from**, so the
+    POST status is not evidence of anything. This re-reads the event
+    store and matches on (job name, eventType).
+
+    ``/lineage/api/events`` pages at a fixed size regardless of any
+    ``limit`` - walk until nothing new appears rather than trusting one
+    response, or a stored event will look missing.
+    """
+    token = _pdc_token(base_url, username, password,
+                       verify_tls=verify_tls, timeout=timeout)
+    url = base_url.rstrip('/') + '/lineage/api/events'
+    headers = {'Authorization': 'Bearer ' + token}
+    seen, stored = set(), set()
+    for _ in range(pages):
+        rs = requests.get(url, headers=headers, verify=verify_tls,
+                          timeout=timeout)
+        rs.raise_for_status()
+        batch = ((rs.json().get('data') or {}).get('events')) or []
+        fresh = [e for e in batch if e.get('_id') not in seen]
+        if not fresh:
+            break
+        for e in fresh:
+            seen.add(e.get('_id'))
+            job = (e.get('job') or {})
+            stored.add((job.get('namespace'), job.get('name'),
+                        e.get('eventType')))
+    missing = [
+        {'namespace': e['job']['namespace'], 'job': e['job']['name'],
+         'eventType': e['eventType']}
+        for e in events
+        if (e['job']['namespace'], e['job']['name'], e['eventType'])
+        not in stored]
+    return {'sent': len(events),
+            'confirmed': len(events) - len(missing),
+            'missing': missing}
+
+
+def unmatched_datasets(events, known_namespaces):
+    """Datasets whose namespace matches nothing the catalog holds.
+
+    This is the `postgresql://` vs `postgres://` class of bug: the event
+    is accepted, stored and well-formed, and lands on a *new* node that
+    never joins the graph. Comparing against the namespaces the catalog
+    actually uses is the only cheap way to catch it.
+    """
+    known = {n for n in known_namespaces if n}
+    out = []
+    for event in events:
+        for ds in list(event.get('inputs') or []) +                 list(event.get('outputs') or []):
+            ns = ds.get('namespace')
+            # 'file' datasets are lineage-only by nature - a local path
+            # is not expected to be a catalogued data source.
+            if ns and ns != 'file' and ns not in known:
+                entry = {'namespace': ns, 'name': ds.get('name')}
+                if entry not in out:
+                    out.append(entry)
+    return out
+
+
 def emit(events, marquez_url, timeout=30):
     """POST OpenLineage events to a Marquez (or any OL-compatible)
     endpoint. Returns the number of events accepted."""
