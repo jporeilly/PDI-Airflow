@@ -172,8 +172,19 @@ produces a real, executable, migratable `.ktr`.
    FROM cscu_core.transactions
    WHERE post_dt >= '2026-06-01'
    ```
-3. Drag a **Write to Log** (log the fields) - a read-only demo needs no
-   writable mart. *(For the full member-360 mart, add a `Table Output` to
+3. Drag a **Write to Log** (log the fields), then a **Text file output**
+   after it, writing to `C:/PDI-Airflow/output/txn_report` (extension
+   `csv`, *Create parent folder* on).
+
+   > The Text file output is what makes the pipeline **visible in PDC's
+   > lineage graph**. Write to Log carries no lineage, so without a
+   > supported output step the transformation emits an input and no
+   > output - half an edge, and PDC draws nothing (while still returning
+   > HTTP 200). Chain it *after* Write to Log rather than branching off
+   > Table Input: two targets on one step **distribute** the rows
+   > between them, so each would get roughly half.
+
+   *(For the full member-360 mart, add a `Table Output` to
    a writable `cscu-mart` target instead.)*
 4. Hop Table Input -> Write to Log; **Save as** `/CSCU/txn_report`.
 

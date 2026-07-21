@@ -1,5 +1,22 @@
 # Changelog
 
+## PDI-AirFlow v1.25.1 - 2026-07-21
+
+- **`txn_report` now writes a real dataset**, so it produces a complete
+  lineage edge instead of half of one. Added a **Text file output**
+  (`C:/PDI-Airflow/output/txn_report.csv`, header on, parent folder
+  created) chained *after* Write to Log - not branched off Table Input,
+  since two targets on one step **distribute** rows between them and
+  each would receive roughly half.
+- Verified on Carte: 17 rows read, 17 written, **18 lines** out (header
+  + rows), real CSCU transaction data in the file. Lineage now publishes
+  `postgresql://192.168.1.200:5433 cscu_core.cscu_core.transactions` ->
+  `file C:/PDI-Airflow/output/txn_report` with **no warnings**.
+- `txn_report.ktr` was only ever in the install, never version
+  controlled - now committed under `lab/carte/pipelines/CSCU/`.
+- Capstone Module 0 updated to build the output step, explaining why it
+  is required for PDC and why it chains rather than branches.
+
 ## PDI-AirFlow v1.25.0 - 2026-07-21
 
 **Why CSCU lineage showed nothing in PDC, per the PDC documentation.**
