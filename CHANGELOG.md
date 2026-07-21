@@ -1,5 +1,30 @@
 # Changelog
 
+## PDI-AirFlow v1.23.0 - 2026-07-21
+
+**The long-standing PDC lineage 401 is solved - and it was never
+authentication.** PDC routes by **virtual host**: `https://pentaho.io`
+serves the app, while `https://192.168.1.200` returns a bare 401 on
+*every* path including `/`. We had been publishing to the IP.
+
+Repointed at the hostname, the same request that had 401'd for weeks
+returns `200 {"statusCode":"10000","message":"Event(s) created
+successfully."}`. Both CSCU pipelines' lineage (6 events, 3 steps) now
+publish to PDC.
+
+The diagnosis is worth recording, because "401" sent us hunting the
+wrong thing repeatedly. Three signals said the token was never being
+evaluated: the response was **byte-identical with and without** an
+`Authorization` header; there was **no `WWW-Authenticate`** header; and
+it was **every API path, not just lineage**, while Keycloak on the same
+host answered normally. That shape means a gateway rejecting before it
+routes - not a service refusing a credential. The token itself was
+always fine (realm `Admin`, every PDC role).
+
+- `lab/UBUNTU-SETUP.md` had actively suggested the IP as an alternative
+  PDC URL - corrected, with the `hosts` requirement called out.
+- New LAB-SETUP troubleshooting row describing the symptom and the tell.
+
 ## PDI-AirFlow v1.22.4 - 2026-07-21
 
 - **PDC status no longer overstates itself.** It probed only Keycloak, so

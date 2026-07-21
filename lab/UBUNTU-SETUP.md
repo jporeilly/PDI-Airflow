@@ -101,7 +101,7 @@ In the Studio → **Settings**:
 | Airflow URL | `http://192.168.1.200:8088` |
 | Marquez API URL | `http://192.168.1.200:6001` |
 | Marquez UI URL | `http://192.168.1.200:3000` |
-| PDC URL | `https://pentaho.io` (or `https://192.168.1.200`) |
+| PDC URL | `https://pentaho.io` - **the hostname, not the IP** (PDC routes by virtual host; the bare IP returns 401 on every API path). Needs a `hosts` entry mapping it to the VM. |
 
 Then **Test connection** on Airflow and PDC. Airflow uses the **REST
 API v2 + JWT** automatically on 3.3 (basic-auth v1 on 2.x).
