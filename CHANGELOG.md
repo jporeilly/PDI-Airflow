@@ -1,5 +1,15 @@
 # Changelog
 
+## PDI-AirFlow v1.30.2 - 2026-07-21
+
+- **Renamed `txn_report`'s output to `txn_extract.csv`.** Naming the
+  file after the transformation made the lineage graph read as
+  *"txn_report is downstream of the database"* - the node is the
+  **file**, not the pipeline, and the transformation is the unlabelled
+  node on the edge. Distinct names remove the ambiguity. Re-run on
+  Carte (17 rows) and republished; lineage now shows
+  `cscu_core.cscu_core.transactions -> C:/PDI-Airflow/output/txn_extract`.
+
 ## PDI-AirFlow v1.30.1 - 2026-07-21
 
 - **Completed the facet-producer fix from v1.30.0's predecessor.** That

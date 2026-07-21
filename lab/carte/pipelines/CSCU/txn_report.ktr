@@ -709,7 +709,7 @@ WHERE post_dt >= '2026-06-01'</sql>
     <fileNameField/>
     <create_parent_folder>Y</create_parent_folder>
     <file>
-      <name>C:/PDI-Airflow/output/txn_report</name>
+      <name>C:/PDI-Airflow/output/txn_extract</name>
       <servlet_output>N</servlet_output>
       <do_not_open_new_file_init>N</do_not_open_new_file_init>
       <extention>csv</extention>

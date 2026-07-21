@@ -188,8 +188,14 @@ produces a real, executable, migratable `.ktr`.
    WHERE post_dt >= '2026-06-01'
    ```
 3. Drag a **Write to Log** (log the fields), then a **Text file output**
-   after it, writing to `C:/PDI-Airflow/output/txn_report` (extension
-   `csv`, *Create parent folder* on).
+   after it, writing to `C:/PDI-Airflow/output/txn_extract` (extension `csv`,
+   *Create parent folder* on).
+
+   > **Name the output differently from the transformation.** Calling
+   > both `txn_report` makes the lineage graph read as *"txn_report is
+   > downstream of the database"*, when the node is the **file**, not
+   > the pipeline - the transformation is the unlabelled node on the
+   > edge. `txn_extract` keeps the two distinct.
 
    > The Text file output is what makes the pipeline **visible in PDC's
    > lineage graph**. Write to Log carries no lineage, so without a

@@ -14,4 +14,4 @@
 # limitations under the License.
 """pdi2dag - migrate PDI jobs/transformations to Airflow DAGs."""
 
-__version__ = '1.30.1'
+__version__ = '1.30.2'
