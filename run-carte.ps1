@@ -65,9 +65,26 @@ if (Test-Path $kettleDef) {
     } else {
         $sharedNote = 'NONE - shared DB connections will not resolve'
     }
+
+    # VFS connections (Amazon S3/MinIO/HCP) live in the Pentaho metastore,
+    # which ALSO follows KETTLE_HOME - so the same gotcha applies. Without
+    # this an s3:// path silently resolves to nothing: with "file required"
+    # off the step reports Finished with 0 rows and no error at all.
+    $globalMeta = Join-Path $env:USERPROFILE '.pentaho\metastore'
+    $installMeta = Join-Path $root '.pentaho\metastore'
+    if (Test-Path $globalMeta) {
+        New-Item -ItemType Directory -Force (Split-Path $installMeta) | Out-Null
+        Copy-Item $globalMeta $installMeta -Recurse -Force
+        $metaNote = "synced from $globalMeta"
+    } elseif (Test-Path $installMeta) {
+        $metaNote = 'using the install copy'
+    } else {
+        $metaNote = 'NONE - VFS (s3://) connections will not resolve'
+    }
 } else {
     $repoNote = "global ~/.kettle repository 'Default'"
     $sharedNote = 'global ~/.kettle\shared.xml'
+    $metaNote = 'global ~/.pentaho\metastore'
 }
 
 Write-Host "Starting Carte on :8081" -ForegroundColor Cyan
@@ -75,6 +92,7 @@ Write-Host "  PDI:        $PdiHome"
 Write-Host "  config:     $config"
 Write-Host "  repository: $repoNote"
 Write-Host "  shared.xml: $sharedNote"
+Write-Host "  metastore:  $metaNote"
 Write-Host "  auth:       cluster / cluster    (Ctrl+C to stop)"
 Write-Host ""
 # Run from the PDI folder: Carte.bat calls Spoon.bat relative to the

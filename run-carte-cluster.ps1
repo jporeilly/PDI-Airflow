@@ -53,6 +53,15 @@ if (Test-Path (Join-Path $root '.kettle\repositories.xml')) {
         Copy-Item $globalShared (Join-Path $root '.kettle\shared.xml') -Force
         Write-Host "Synced shared.xml from $globalShared" -ForegroundColor DarkGray
     }
+    # VFS (s3://) connections live in the Pentaho metastore, which also
+    # follows KETTLE_HOME - without this an s3:// path silently matches
+    # nothing and the step reports Finished with 0 rows.
+    $globalMeta = Join-Path $env:USERPROFILE '.pentaho\metastore'
+    if (Test-Path $globalMeta) {
+        New-Item -ItemType Directory -Force (Join-Path $root '.pentaho') | Out-Null
+        Copy-Item $globalMeta (Join-Path $root '.pentaho\metastore') -Recurse -Force
+        Write-Host "Synced metastore from $globalMeta" -ForegroundColor DarkGray
+    }
 }
 
 # Master first, then the slaves (give the master a moment to accept

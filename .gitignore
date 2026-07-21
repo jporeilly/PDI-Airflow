@@ -28,3 +28,10 @@ workshop/dags/deploy-target/*.py
 *.openlineage.json
 _pdc_share/
 webapp/logs/
+
+# Kettle/Pentaho runtime state synced in by run-carte*.ps1.
+# These carry credentials (shared.xml DB passwords, metastore VFS keys) -
+# never commit them, even if the launcher is run from a source clone.
+.kettle/
+.pentaho/
+**/shared.xml

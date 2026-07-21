@@ -19,7 +19,17 @@ Two launcher fixes found while getting the first live CSCU run working.
   folder - and sets `[Environment]::CurrentDirectory`, because
   `Push-Location` changes only PowerShell's location, not the **process**
   working directory that child processes inherit.
-- Documented both in LAB-SETUP troubleshooting, plus a capstone note to
+- **Launchers also sync the Pentaho metastore.** VFS connections
+  (Amazon S3/MinIO/HCP) are stored in `%USERPROFILE%\.pentaho\metastore`, which
+  follows `KETTLE_HOME` exactly like `shared.xml` - so `s3://` paths
+  resolved to nothing under Carte. Worse, it failed *silently*: with the
+  step's "File required" off, an unresolvable path matches zero files and
+  the transformation reports **Finished, 0 rows, no error**. Note Carte
+  caches the metastore location at JVM start, so this needs a restart.
+- Added `.gitignore` entries for `.kettle/`, `.pentaho/` and `shared.xml`
+  - both files carry credentials (DB passwords, VFS access keys) and the
+  launcher writes them into its own folder.
+- Documented all of it in LAB-SETUP troubleshooting, plus a capstone note to
   define the `cscu-core` shared connection in Spoon **before** starting
   Carte.
 
