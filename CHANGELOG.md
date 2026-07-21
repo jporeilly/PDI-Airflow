@@ -1,5 +1,17 @@
 # Changelog
 
+## PDI-AirFlow v1.22.4 - 2026-07-21
+
+- **PDC status no longer overstates itself.** It probed only Keycloak, so
+  the light went green on a successful token while every lineage publish
+  returned 401 - the status said "connected" about something it had never
+  tested. It now also probes `/lineage/api/events` (GET, so no junk event
+  is created) and reports `lineage_ok` + `lineage_detail`. 401/403 means
+  the token was refused; anything else means auth was passed.
+
+  Current lab reading: `authenticated: true, lineage_ok: false, HTTP
+  401` - which is the honest picture of the outstanding PDC issue.
+
 ## PDI-AirFlow v1.22.3 - 2026-07-21
 
 - **Pinned a shared Airflow `secret_key`.** Nothing set it, so each of

@@ -675,13 +675,33 @@ def pdc_status():
                 and settings.get('pdc_password'):
             try:
                 from pdi2dag.lineage import _pdc_token
-                _pdc_token(url, settings['pdc_user'],
-                           settings['pdc_password'], verify_tls=False,
-                           timeout=8)
+                token = _pdc_token(url, settings['pdc_user'],
+                                   settings['pdc_password'],
+                                   verify_tls=False, timeout=8)
                 authenticated = True
             except Exception:  # noqa: BLE001 - status probe only
                 authenticated = False
+    # Holding a Keycloak token does NOT mean lineage will publish - PDC
+    # can hand out a perfectly good token and still reject every API
+    # call at its gateway. Probe the endpoint we actually POST to, or
+    # the light says "connected" while every publish 401s. GET it rather
+    # than POST: we want reachability, not a junk lineage event. 401/403
+    # means the token was refused; anything else (405, 404, 2xx) means we
+    # got past auth.
+    if authenticated:
+        try:
+            probe = requests.get(
+                url.rstrip('/') + '/lineage/api/events',
+                headers={'Authorization': 'Bearer ' + token},
+                verify=False, timeout=8)
+            lineage_ok = probe.status_code not in (401, 403)
+            lineage_detail = 'HTTP {}'.format(probe.status_code)
+        except requests.RequestException as e:
+            lineage_ok, lineage_detail = False, str(e)[:120]
+    else:
+        lineage_ok, lineage_detail = False, 'not authenticated'
     return {'reachable': reachable, 'authenticated': authenticated,
+            'lineage_ok': lineage_ok, 'lineage_detail': lineage_detail,
             'url': url}
 
 
