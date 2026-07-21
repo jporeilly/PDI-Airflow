@@ -151,7 +151,7 @@ class TestFileDatasets:
             SAMPLES, 'cscu', 'import_ach_minio.ktr'))
         ins, outs = trans_datasets(d)
         assert ins[0]['namespace'] == 's3://cscu-documents'
-        assert ins[0]['name'] == 'ach_payments_2026.csv'
+        assert ins[0]['name'] == 'feeds/ach_payments_2026.csv'
         assert outs[0]['name'] == 'cscu_mart.staging.ach_stg'
 
     def test_s3_and_local_file_naming(self):

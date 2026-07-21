@@ -1,5 +1,19 @@
 # Changelog
 
+## PDI-AirFlow v1.20.5 - 2026-07-20
+
+- **MinIO feed sample + folder ingestion.** Added
+  `samples/cscu/data/ach_payments_2026.csv` (20 rows matching the real
+  `cscu_core.ach_payments` schema, June dates) to upload to a dedicated
+  **`feeds/`** prefix in the `cscu-documents` bucket - keeping PDI feeds
+  out of the documents PDC scans. Blueprint + test repointed to
+  `s3://cscu-documents/feeds/ach_payments_2026.csv`.
+- **Capstone Module 5** now shows building the MinIO reader in Spoon and
+  answers the folder question: **Text file input** takes a
+  *File/Directory* + *Wildcard (RegExp)* (`s3://cscu-documents/feeds/` +
+  `.*\.csv`) to ingest a whole folder - no per-file entry; **CSV file
+  input** is the single-file (or filename-from-field) variant.
+
 ## PDI-AirFlow v1.20.4 - 2026-07-20
 
 - **CSCU: default transaction date corrected to the sample data.** The

@@ -18,7 +18,7 @@
   <step>
     <name>Read ACH from MinIO</name>
     <type>CsvInput</type>
-    <filename>s3://cscu-documents/ach_payments_2026.csv</filename>
+    <filename>s3://cscu-documents/feeds/ach_payments_2026.csv</filename>
   </step>
   <step>
     <name>Load ACH Payments</name>

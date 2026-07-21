@@ -154,10 +154,14 @@ credit-union pipeline.
 ## Module 5 - Object-store ingestion from MinIO (15 min)
 
 The same `cscu-documents` MinIO bucket that PDC/Glossary catalogs for
-*unstructured* documents can also be a PDI **source**. `import_ach_minio.ktr`
-reads the ACH export from `s3://cscu-documents/ach_payments_2026.csv`
-instead of a local file - so the PDI pipeline and the document catalog
-share one bucket.
+*unstructured* documents can also be a PDI **source** - so the pipeline
+and the document catalog share one bucket.
+
+Keep PDI feeds in their own prefix, **`feeds/`**, so they don't mix with
+the documents PDC scans. Upload the sample feed
+[`samples/cscu/data/ach_payments_2026.csv`](../../samples/cscu/data/ach_payments_2026.csv)
+to `cscu-documents/feeds/` (MinIO console `:9001`, or
+`mc cp ach_payments_2026.csv local/cscu-documents/feeds/`).
 
 1. **Create a VFS connection** in Spoon (New VFS Connection ->
    Amazon S3/Minio/HCP -> S3 Connection Type `Minio/HCP`):
@@ -180,12 +184,26 @@ share one bucket.
    > Connection* checked, the `s3://cscu-documents/…` path in
    > `import_ach_minio.ktr` works unchanged and the lineage stays clean.
 
-2. **Run** `import_ach_minio` on Carte (single or clustered) via its DAG.
-3. **Lineage**: the input dataset is `s3://cscu-documents/ach_payments_2026.csv`
-   (object-store scheme + bucket kept as the namespace), feeding
-   `cscu_mart.staging.ach_stg`. In Marquez/PDC the PDI job now traces
-   from the **MinIO object** into the mart - the object-store half of the
-   catalog, produced by PDI rather than a document scan.
+2. **Build it in Spoon** (as in Module 0) - `/CSCU/ingest_from_minio`:
+
+   - **Text file input** reads a **whole folder**: set *File/Directory* to
+     `s3://cscu-documents/feeds/` and *Wildcard (RegExp)* to `.*\.csv`,
+     then **Add**. Every matching object is picked up - you do **not**
+     enter files one by one, and tomorrow's drop is included automatically.
+     (**CSV file input** is single-file and faster; use it when you want
+     exactly one object, or feed it filenames from a **Get File Names**
+     step.)
+   - **Get Fields** to read the header (`ach_id, acct_id, ach_rte_no,
+     ext_acct_no, dir_cd, ach_amt, eff_dt, ach_status, return_cd`).
+   - **Write to Log** (or `Table Output` to a writable `cscu-mart`), hop,
+     **Save as** `/CSCU/ingest_from_minio`.
+
+3. **Migrate and run** it as in Module 2, on single Carte or clustered.
+4. **Lineage**: the input dataset is
+   `s3://cscu-documents` + `feeds/ach_payments_2026.csv` (object-store
+   scheme + bucket kept as the namespace). In Marquez/PDC the PDI job now
+   traces from the **MinIO object** into the mart - the object-store half
+   of the catalog, produced by PDI rather than a document scan.
 
 **Structured vs unstructured:** PDC/Glossary scans `cscu-documents` for
 document structure and PII; this module shows PDI *consuming* an object
