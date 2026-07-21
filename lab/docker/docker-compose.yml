@@ -42,6 +42,13 @@ x-airflow-common: &airflow-common
     # /auth/token endpoint the Studio's REST client (API v2) uses.
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
     AIRFLOW__API_AUTH__JWT_SECRET: pdi-airflow-lab-jwt-secret-change-me
+    # Every component (scheduler, api-server, triggerer, dag-processor)
+    # MUST share one secret_key. Left unset, each container generates its
+    # OWN random key at startup, so tokens minted by one fail validation
+    # in another and logs/UI break with "please make sure that all your
+    # Airflow components have the same 'secret_key' configured". Pinning
+    # it here means every service inheriting this env block agrees.
+    AIRFLOW__API__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-pdi-airflow-lab-secret-key-change-me}
     AIRFLOW__API__EXPOSE_CONFIG: 'true'
     AIRFLOW__OPENLINEAGE__TRANSPORT: '{"type":"http","url":"http://marquez-api:5000","endpoint":"api/v1/lineage"}'
     AIRFLOW__OPENLINEAGE__NAMESPACE: pdi

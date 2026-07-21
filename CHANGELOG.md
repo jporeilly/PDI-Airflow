@@ -1,5 +1,18 @@
 # Changelog
 
+## PDI-AirFlow v1.22.3 - 2026-07-21
+
+- **Pinned a shared Airflow `secret_key`.** Nothing set it, so each of
+  the five containers generated its **own random key** at startup and
+  tokens minted by one failed validation in another - surfacing as
+  *"please make sure that all your Airflow components have the same
+  'secret_key' configured"* and broken log/UI fetches. Same family as the
+  `execution_api_server_url` bug: a default that is harmless in
+  `standalone` and wrong once the components are split across containers.
+  Airflow 3 reads it from `[api]`, 2.x from `[webserver]`; both compose
+  files set the right one, overridable via `AIRFLOW_SECRET_KEY` in
+  `.env`.
+
 ## PDI-AirFlow v1.22.2 - 2026-07-21
 
 - **Fixed the stale-UI-after-rebuild trap.** `index.html` was served with

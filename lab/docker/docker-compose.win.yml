@@ -21,6 +21,11 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session
+    # Shared across webserver/scheduler/triggerer. Unset, each container
+    # generates its own random key and cross-component token validation
+    # (log fetching, sessions) fails. Airflow 2.x reads it from
+    # [webserver]; 3.x moved it to [api] (see docker-compose.yml).
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-pdi-airflow-lab-secret-key-change-me}
     AIRFLOW__OPENLINEAGE__TRANSPORT: '{"type":"http","url":"http://marquez-api:5000","endpoint":"api/v1/lineage"}'
     AIRFLOW__OPENLINEAGE__NAMESPACE: pdi
     AIRFLOW_CONN_PDI_DEFAULT: '{"conn_type":"pentaho","host":"http://${CARTE_HOST:-host.docker.internal}","port":${CARTE_PORT:-8081},"login":"${PDI_REPO_USER:-admin}","password":"${PDI_REPO_PASSWORD:-password}","extra":{"rep":"${PDI_REPO:-Default}","carte_username":"${CARTE_USER:-cluster}","carte_password":"${CARTE_PASSWORD:-cluster}"}}'
