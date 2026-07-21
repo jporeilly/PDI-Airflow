@@ -10,6 +10,50 @@ It reuses the **same `cscu_core` database** as the PDC-Scenarios /
 Glossary lab (`192.168.1.200:5433`), so the PDI table lineage lands in
 the **same PDC** the catalog work already uses.
 
+## The process end to end
+
+Order matters: the catalog is prepared **first**, so the PDI metadata
+enriches governed assets instead of inventing stubs.
+
+```mermaid
+flowchart TD
+    subgraph prep["1 - Prepare the catalog (PDC) - do this FIRST"]
+        P1["Connect sources<br/>cscu-datasources.csv"]
+        P2["Ingest / Scan Files<br/><b>structure</b>: tables, columns, documents"]
+        P3["Profile<br/><b>quality + PII</b>: row counts, nulls,<br/>patterns, business rules"]
+        P1 --> P2 --> P3
+    end
+
+    subgraph build["2 - Build the pipeline (PDI / Spoon)"]
+        B1["Table Input<br/>cscu_core.transactions"]
+        B2["Text file input<br/>s3://cscu-documents/feeds/"]
+        B3["Write to Log<br/>/ Table Output"]
+        B1 --> B3
+        B2 --> B3
+    end
+
+    subgraph mig["3 - Migrate + run"]
+        M1["Studio / pdi2dag<br/>.ktr -> DAG -> deploy"]
+        M2["Airflow scheduler<br/>triggers the DAG"]
+        M3["Carte executes<br/>+ step row counts"]
+        M1 --> M2 --> M3
+    end
+
+    subgraph land["4 - Metadata lands"]
+        L1["<b>Marquez</b><br/>orchestration:<br/>runs, states, durations"]
+        L2["<b>PDC</b><br/><b>pipeline layer</b> on the<br/>catalogued + profiled assets"]
+    end
+
+    prep --> build --> mig --> land
+    P3 -. "profiled facts (row counts, PII)<br/>give the lineage its meaning" .-> L2
+```
+
+**Three layers on one asset:** *structure* (what it is) from the scan,
+*profile* (what the data looks like, how sensitive) from profiling, and
+the *pipeline* layer (what consumes it, where it goes, how many rows)
+from PDI. Only the third comes from us - and it needs the first two to
+land on.
+
 ## Two kinds of `.ktr` here
 
 - **Shipped blueprints** — `samples/cscu/*.ktr` (also staged at
@@ -44,23 +88,50 @@ Generated reference DAGs live in [`workshop/dags/CSCU/`](../dags/CSCU/).
    with a **`cscu-core`** database connection to
    `192.168.1.200:5433 / cscu_core / pdc_user / catalog123!` defined as a
    **shared** connection in Spoon (so every transformation resolves it).
-4. **Register + scan the CSCU sources in PDC first** - this is what lets
-   the PDI metadata *enrich* governed assets instead of creating stubs.
-   The kit pre-fills both connections in
-   `PDC-Scenarios/data_sources/CSCU/cscu-datasources.csv` (load them with
-   the Glossary Generator's bulk loader, or add them by hand), then
-   ingest / Scan Files:
+4. **Catalog the CSCU sources in PDC first** - connect -> ingest ->
+   **profile**. This is what lets the PDI metadata *enrich* governed
+   assets instead of creating stubs, and what gives the lineage meaning.
 
-   | Source | Details |
-   |---|---|
-   | `CopperState_Core_Banking` (postgres) | `192.168.1.200:5433`, db+schema `cscu_core`, `pdc_user` / `catalog123!` |
-   | `CopperState_Documents` (minio) | `http://192.168.1.200:9000`, bucket `cscu-documents`, `cscu_minio_user` / `minio_secret_123!` |
+   a. **Connect** - the kit pre-fills both connections in
+      `PDC-Scenarios/data_sources/CSCU/cscu-datasources.csv` (load them
+      with the Glossary Generator's bulk loader, or add them by hand):
+
+      | Source | Details |
+      |---|---|
+      | `CopperState_Core_Banking` (postgres) | `192.168.1.200:5433`, db+schema `cscu_core`, `pdc_user` / `catalog123!` |
+      | `CopperState_Documents` (minio) | `http://192.168.1.200:9000`, bucket `cscu-documents`, `cscu_minio_user` / `minio_secret_123!` |
+
+   b. **Ingest / Scan Files** - the *structure* layer (tables, columns,
+      types; documents in the bucket).
+
+   c. **Profile** - the *quality + sensitivity* layer: row counts, null
+      %, distinct/cardinality, patterns, and the PII hits that drive the
+      business rules. This is CSCU courseware **Workshop-04 (Profiling &
+      Quality)** and **Workshop-05 (Data Identification)** - the six
+      rules, the flagship `opted_out_marketing` opt-out, the PCI
+      `cvv_cd` triangulation.
 
    > Scan the **whole** bucket (`path: /`) - including `feeds/`. The PDI
    > lineage is meant to land *on* those catalogued objects; excluding
    > them would remove the assets the enrichment attaches to. If the
    > sources aren't catalogued first, PDC auto-creates bare stub data
    > sources from the incoming lineage events instead.
+
+   **Why profiling matters to the lineage** (not just housekeeping):
+   - **Row counts reconcile** - PDC profiles `cscu_core.transactions` at
+     *N* rows; Carte reports it read *N* into `staging.txn_stg`. Those
+     two numbers agreeing (or not) is a real data-quality signal.
+   - **Sensitivity propagates** - once profiling flags `ssn`, `cvv_cd`,
+     `ext_acct_no`, the PDI lineage shows *which pipeline carries those
+     columns into a downstream mart*. That is the governance question a
+     catalog alone cannot answer.
+   - **`opted_out_marketing`** - lineage showing which pipeline moves
+     that column downstream is exactly the compliance trace.
+
+   > **Honest limit:** this emitter is **table/dataset-level**. It shows
+   > `members -> member_360` with row counts, not "`ssn` lands in column
+   > X" - column-level lineage is the paid PDI OpenLineage plugin's
+   > territory.
 
 The *migration + structural-lineage* part (Module 1) needs none of the DB
 or Carte - it works off the shipped blueprints.

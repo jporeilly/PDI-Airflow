@@ -1,5 +1,25 @@
 # Changelog
 
+## PDI-AirFlow v1.21.0 - 2026-07-20
+
+- **Profiling added to the capstone sequence + an end-to-end flow
+  diagram.** The PDC prerequisite is now the full three-step catalog
+  prep - **connect -> ingest/scan -> profile** - with the profiling step
+  tied to CSCU courseware Workshop-04/05 (the six rules, the
+  `opted_out_marketing` opt-out, the PCI `cvv_cd` triangulation).
+- Documented *why* profiling matters to the lineage rather than being
+  housekeeping: **row counts reconcile** (PDC profiles N rows; Carte
+  reports N read), **sensitivity propagates** (once `ssn`/`cvv_cd` are
+  flagged, lineage shows which pipeline carries them downstream), and the
+  `opted_out_marketing` compliance trace. Notes the honest limit - this
+  emitter is table/dataset-level, not column-level.
+- New **mermaid flow diagram** at the top of the capstone: prepare the
+  catalog (connect/scan/profile) -> build in Spoon -> migrate + run ->
+  metadata lands (Marquez orchestration + PDC pipeline layer), with the
+  dependency that profiled facts give the lineage its meaning. Framed as
+  **three layers on one asset**: structure, profile, pipeline - only the
+  third comes from PDI, and it needs the first two to land on.
+
 ## PDI-AirFlow v1.20.6 - 2026-07-20
 
 - **Capstone: the enhanced-PDI-metadata framing made explicit.** The CSCU
