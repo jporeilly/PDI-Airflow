@@ -127,8 +127,23 @@ Generated reference DAGs live in [`workshop/dags/CSCU/`](../dags/CSCU/).
 
    **Why profiling matters to the lineage** (not just housekeeping):
    - **Row counts reconcile** - PDC profiles `cscu_core.transactions` at
-     *N* rows; Carte reports it read *N* into `staging.txn_stg`. Those
-     two numbers agreeing (or not) is a real data-quality signal.
+     *N* rows; Carte reports it read *N*. Those two numbers agreeing (or
+     not) is a real data-quality signal.
+
+     > **Read the two numbers from the right places.** The **Statistics**
+     > panel on the table (*Rows 17 / Columns 9*) is **PDC's own
+     > profiling**, not the pipeline's count - it is populated by the
+     > profiling job and shows the same figure before any lineage is
+     > published. The pipeline's count is the `rowCount` facet on the
+     > lineage event, taken from the Carte run. PDC **stores** it but
+     > does not display it in the lineage graph, so the reconciliation
+     > is a comparison you make between the two, not something the UI
+     > puts side by side. Do not demo the Statistics panel as though it
+     > were the pipeline's number.
+     >
+     > For CSCU both read **17**: profiled 17, Carte read 17. To see the
+     > pipeline's own count rendered, use **Marquez**, which displays
+     > the facet.
    - **Sensitivity propagates** - once profiling flags `ssn`, `cvv_cd`,
      `ext_acct_no`, the PDI lineage shows *which pipeline carries those
      columns into a downstream mart*. That is the governance question a

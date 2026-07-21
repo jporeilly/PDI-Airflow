@@ -1,5 +1,17 @@
 # Changelog
 
+## PDI-AirFlow v1.27.2 - 2026-07-21
+
+- **Documented which row count is which.** The *Statistics* panel on a
+  PDC table (*Rows 17 / Columns 9*) is **PDC's own profiling output**
+  (`metadata.stats`, `status.profile: COMPLETED`) - it shows the same
+  figure before any lineage exists and is easy to mistake for the
+  pipeline's count in a demo. The pipeline's count is the `rowCount`
+  facet from the Carte run, which PDC **stores but does not render**.
+  The reconciliation is therefore a comparison you make across the two
+  sources, and Marquez is where the facet is actually displayed. For
+  CSCU both read 17: profiled 17, Carte read 17.
+
 ## PDI-AirFlow v1.27.1 - 2026-07-21
 
 - **rowCount facets now carry the same producer as the event holding
