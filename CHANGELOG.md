@@ -1,5 +1,22 @@
 # Changelog
 
+## PDI-AirFlow v1.30.0 - 2026-07-21
+
+- **The lineage namespace is now the real PDI server hostname**, not the
+  placeholder `pdi2dag`. PDC turns this namespace into the **PDI Server**
+  node its ETL tree hangs from, so a made-up value produced a valid
+  graph attributed to a server that does not exist - which is why
+  nothing appeared under a PDI Server. New `resolve_server_name()`
+  takes, in order: an explicit `pdi_server` setting, the Carte host
+  (that machine *is* the PDI server), then this machine's hostname. The
+  old `pdi2dag` default is treated as "not chosen" so existing installs
+  upgrade rather than silently keeping a name that matches nothing.
+- `pdi_server` now defaults to blank (auto-derive) and is documented in
+  LAB-SETUP.
+
+Note that changing the namespace creates a *new* PDI Server node -
+events already published under `pdi2dag` remain until deleted.
+
 ## PDI-AirFlow v1.29.0 - 2026-07-21
 
 **New Reconcile view** (*Observe -> Reconcile*). PDC profiles a table and

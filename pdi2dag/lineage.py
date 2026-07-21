@@ -31,8 +31,10 @@ appears immediately without waiting for a Carte execution.
 from __future__ import annotations
 
 import re
+import socket
 import uuid
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit
 
 import requests
 
@@ -281,6 +283,36 @@ def build_trans_model_events(detail, namespace='pdi', prefix=None,
 #   (run + job + root), NOT from datasets.
 PDI_PLUGIN_PRODUCER = ('https://github.com/pentaho/pdi-plugins-ee/tree/'
                        'pdi-openlineage-plugin-ee/pdi-openlineage-plugin')
+
+
+# The old placeholder default. Treated as "not chosen" so existing
+# settings auto-upgrade to a real hostname rather than silently keeping
+# a name that never matches a PDI server.
+_PLACEHOLDER_SERVER = 'pdi2dag'
+_LOCAL_HOSTS = {'localhost', '127.0.0.1', '::1', ''}
+
+
+def resolve_server_name(explicit=None, carte_url=None):
+    """The PDI server name to use as the OpenLineage namespace.
+
+    The plugin uses the **PDI server hostname** (its Config
+    localHostname / HostnameResolver), and PDC turns that namespace into
+    the *PDI Server* node its ETL tree hangs from. An arbitrary string
+    still produces a valid graph, but one attributed to a server that
+    does not exist.
+
+    Order: an explicit name wins; otherwise the Carte host, since that
+    *is* the machine running PDI; otherwise this machine's hostname.
+    """
+    if explicit and explicit != _PLACEHOLDER_SERVER:
+        return explicit
+    host = ''
+    if carte_url:
+        host = urlsplit(carte_url).hostname or ''
+    if host.lower() not in _LOCAL_HOSTS:
+        return host
+    # Carte is on this machine, so this machine is the PDI server.
+    return socket.gethostname()
 
 
 def _pdi_job_facets(job_type):

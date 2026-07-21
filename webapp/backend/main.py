@@ -55,7 +55,8 @@ from pdi2dag.lineage import (_input_dataset, build_job_model_events,
                              build_pdc_etl_events,
                              build_pdc_trans_events,
                              build_trans_model_events, emit, emit_pdc,
-                             lineage_warnings, trans_datasets)
+                             lineage_warnings, resolve_server_name,
+                             trans_datasets)
 from pdi2dag.reconcile import pdc_table_row_counts, reconcile_inputs
 from pdi2dag.parser import (default_shared_xml, parse_file,
                             parse_shared_connections,
@@ -109,7 +110,9 @@ DEFAULT_SETTINGS = {
     'pdc_url': 'https://pentaho.io',
     'pdc_user': '',
     'pdc_password': '',
-    'pdi_server': 'pdi2dag',
+    # Blank = derive the PDI server hostname (see
+    # resolve_server_name). PDC makes this the 'PDI Server' node.
+    'pdi_server': '',
     # Kettle shared.xml - resolves *shared* DB connections that .ktr
     # files reference by name only. Blank = $KETTLE_HOME/.kettle or ~.
     'shared_xml': r'C:\PDI-Airflow\.kettle\shared.xml',
@@ -513,6 +516,10 @@ def lineage_publish(body: LineagePublishRequest):
     # Real row counts from the last Carte run, so the lineage carries
     # facts (17 rows read) rather than only shape.
     metrics = _carte_metrics(list(trans_details), settings)
+    # PDC turns this namespace into the "PDI Server" node its ETL tree
+    # hangs from, so it has to be the actual host running PDI.
+    server = resolve_server_name(settings.get('pdi_server'),
+                                 settings.get('carte_url'))
 
     events, jobs, steps = [], 0, 0
     referenced = set()
@@ -522,8 +529,7 @@ def lineage_publish(body: LineagePublishRequest):
             # ParentRunFacet + table datasets from Table Input/Output.
             events.extend(build_pdc_etl_events(
                 doc, trans_details=trans_details,
-                server_name=settings.get('pdi_server', 'pdi2dag'),
-                step_metrics=metrics))
+                server_name=server, step_metrics=metrics))
         else:
             events.extend(build_job_model_events(
                 doc, namespace=ns, trans_details=trans_details,
@@ -544,7 +550,7 @@ def lineage_publish(body: LineagePublishRequest):
                 # and then silently shows up nowhere.
                 events.extend(build_pdc_trans_events(
                     detail, trans_paths.get(name, '/' + name),
-                    server_name=settings.get('pdi_server', 'pdi2dag'),
+                    server_name=server,
                     step_metrics=metrics.get(name)))
             else:
                 events.extend(build_trans_model_events(
