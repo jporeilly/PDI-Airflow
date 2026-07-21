@@ -1,5 +1,30 @@
 # Changelog
 
+## PDI-AirFlow v1.27.0 - 2026-07-21
+
+**Lineage now carries real Carte row counts.** The facets existed but
+nothing filled them from the Studio - the CLI could only take a
+hand-supplied `transStatus` XML, so everything published from the app
+described *shape* with no numbers. New `pdi2dag/carte.py` reads the last
+run straight off Carte, and `/api/lineage/publish` attaches the counts
+and reports `metrics_from_carte`.
+
+CSCU now publishes `cscu_core.cscu_core.transactions` **rowCount 17** ->
+`C:/PDI-Airflow/output/txn_report` **rowCount 17**. Those numbers are
+the point: PDC profiles the table at N rows and Carte reports N read, so
+the two either reconcile or you have found something.
+
+Run selection deserves its own note. Carte's `/kettle/status/` returns
+transformations in **no guaranteed order**, and re-running one leaves
+several entries under the same `transname`, so "take the last" reports
+on an *earlier* run - a fixed pipeline looks broken, or a broken one
+looks fixed. `latest_run_id()` selects by newest parsed start time.
+Writing it, the first version read `logdate` while Carte actually sends
+**`log_date`**: every entry parsed as undated and selection fell back to
+whatever came first, returning a pre-fix run whose step list was one
+step short. It reads both spellings now. When you control the execution,
+diffing run ids around it (`scripts/carte_run.py`) remains stronger.
+
 ## PDI-AirFlow v1.26.0 - 2026-07-21
 
 **PostgreSQL datasets used the wrong namespace scheme: `postgresql://`

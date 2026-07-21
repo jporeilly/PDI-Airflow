@@ -37,6 +37,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.parse import urlsplit, urlunsplit
 
+import xml.etree.ElementTree as ET
+
 import requests
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -364,6 +366,32 @@ def _parse_trans_content(filename, content, settings=None):
         os.unlink(tmp)
 
 
+def _carte_metrics(trans_names, settings):
+    """Live per-step metrics from Carte, keyed by transformation name.
+
+    Best-effort: lineage is still worth publishing without numbers, so a
+    Carte that is down or has never run the transformation costs us the
+    row counts, not the publish.
+    """
+    url = (settings.get('carte_url') or '').rstrip('/')
+    if not url:
+        return {}
+    from requests.auth import HTTPBasicAuth
+    from pdi2dag.carte import fetch_step_metrics
+    auth = HTTPBasicAuth(settings.get('carte_user', ''),
+                         settings.get('carte_password', ''))
+    out = {}
+    for name in trans_names:
+        try:
+            metrics = fetch_step_metrics(url, name, auth=auth, timeout=10)
+        except (requests.RequestException, ValueError, ET.ParseError) as e:
+            log.info('No Carte metrics for %s: %s', name, e)
+            continue
+        if metrics:
+            out[name] = metrics
+    return out
+
+
 def _shared_connections(settings=None):
     settings = settings if settings is not None else load_settings()
     path = settings.get('shared_xml') or default_shared_xml()
@@ -466,6 +494,10 @@ def lineage_publish(body: LineagePublishRequest):
         except ValueError as e:
             return _err('{}: {}'.format(f.filename, e))
 
+    # Real row counts from the last Carte run, so the lineage carries
+    # facts (17 rows read) rather than only shape.
+    metrics = _carte_metrics(list(trans_details), settings)
+
     events, jobs, steps = [], 0, 0
     referenced = set()
     for doc in job_docs:
@@ -474,7 +506,8 @@ def lineage_publish(body: LineagePublishRequest):
             # ParentRunFacet + table datasets from Table Input/Output.
             events.extend(build_pdc_etl_events(
                 doc, trans_details=trans_details,
-                server_name=settings.get('pdi_server', 'pdi2dag')))
+                server_name=settings.get('pdi_server', 'pdi2dag'),
+                step_metrics=metrics))
         else:
             events.extend(build_job_model_events(
                 doc, namespace=ns, trans_details=trans_details))
@@ -494,7 +527,8 @@ def lineage_publish(body: LineagePublishRequest):
                 # and then silently shows up nowhere.
                 events.extend(build_pdc_trans_events(
                     detail, trans_paths.get(name, '/' + name),
-                    server_name=settings.get('pdi_server', 'pdi2dag')))
+                    server_name=settings.get('pdi_server', 'pdi2dag'),
+                    step_metrics=metrics.get(name)))
             else:
                 events.extend(build_trans_model_events(detail, namespace=ns))
             steps += len(detail.steps)
@@ -504,6 +538,7 @@ def lineage_publish(body: LineagePublishRequest):
         ndjson = '\n'.join(json.dumps(e) for e in events) + '\n'
         return JSONResponse(content={'events': len(events), 'jobs': jobs,
                                      'steps': steps, 'target': 'file',
+                                     'metrics_from_carte': sorted(metrics),
                                      'ndjson': ndjson})
 
     try:
@@ -524,6 +559,7 @@ def lineage_publish(body: LineagePublishRequest):
         warnings.extend(lineage_warnings(detail))
     return {'events': len(events), 'jobs': jobs, 'steps': steps,
             'namespace': ns, 'target': body.target,
+            'metrics_from_carte': sorted(metrics),
             'warnings': warnings}
 
 
