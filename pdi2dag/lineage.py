@@ -636,9 +636,13 @@ def build_pdc_trans_events(detail, repo_path, namespace=None,
         'run': {'runId': run_id, 'facets': {}},
         'job': job,
         'inputs': [_input_dataset(d['namespace'], d['name'],
-                                  d.get('rowCount')) for d in inputs],
+                                  d.get('rowCount'),
+                                  producer=PDI_PLUGIN_PRODUCER)
+                   for d in inputs],
         'outputs': [_output_dataset(d['namespace'], d['name'],
-                                    d.get('rowCount')) for d in outputs],
+                                    d.get('rowCount'),
+                                    producer=PDI_PLUGIN_PRODUCER)
+                    for d in outputs],
     }
     return [
         dict(base, eventType='START', eventTime=now.isoformat()),

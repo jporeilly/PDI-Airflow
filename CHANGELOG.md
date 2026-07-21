@@ -1,5 +1,16 @@
 # Changelog
 
+## PDI-AirFlow v1.30.1 - 2026-07-21
+
+- **Completed the facet-producer fix from v1.30.0's predecessor.** That
+  change only touched `build_pdc_etl_events` (via `_run_events`) and
+  missed `build_pdc_trans_events` - which is the builder actually used
+  for standalone `.ktr` files, so every event we have been publishing
+  still carried mismatched producers. Now consistent in both.
+
+  Worth recording that the earlier commit message claimed the fix was
+  done. It was verified on the wrong code path.
+
 ## PDI-AirFlow v1.30.0 - 2026-07-21
 
 - **The lineage namespace is now the real PDI server hostname**, not the
