@@ -1,5 +1,21 @@
 # Changelog
 
+## PDI-AirFlow v1.27.1 - 2026-07-21
+
+- **rowCount facets now carry the same producer as the event holding
+  them.** PDC events are emitted as the PDI OpenLineage plugin, but
+  their dataset facets were stamped `pdi2dag` - a facet claiming a
+  different origin than its event is inconsistent, and a consumer is
+  entitled to ignore it. Whether this is why PDC stores the counts but
+  does not display them is unproven; it was wrong regardless.
+
+  **Status of row counts in PDC:** verified *stored* (`rowCount: 17` on
+  both the input and output dataset of the newest `/CSCU/txn_report`
+  event, read back from PDC's own event store) but **not rendered** in
+  the lineage graph. Note also that the output file gets **no catalog
+  entity** - it is a lineage-only node - so there is nothing for PDC to
+  hang statistics off in the way it does for a scanned table.
+
 ## PDI-AirFlow v1.27.0 - 2026-07-21
 
 **Lineage now carries real Carte row counts.** The facets existed but

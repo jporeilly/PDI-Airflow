@@ -55,13 +55,18 @@ def _dataset(namespace, name):
     return {'namespace': namespace, 'name': name}
 
 
-def _output_dataset(namespace, name, row_count=None):
-    """Output dataset with an optional real rowCount (from Carte)."""
+def _output_dataset(namespace, name, row_count=None, producer=None):
+    """Output dataset with an optional real rowCount (from Carte).
+
+    ``producer`` should match the enclosing event's producer - a facet
+    claiming a different origin than the event carrying it is
+    inconsistent, and a consumer is entitled to ignore it.
+    """
     ds = {'namespace': namespace, 'name': name}
     if row_count is not None:
         ds['outputFacets'] = {
             'outputStatistics': {
-                '_producer': PRODUCER,
+                '_producer': producer or PRODUCER,
                 '_schemaURL': OUTPUT_STATS_URL,
                 'rowCount': int(row_count),
             },
@@ -69,13 +74,13 @@ def _output_dataset(namespace, name, row_count=None):
     return ds
 
 
-def _input_dataset(namespace, name, row_count=None):
+def _input_dataset(namespace, name, row_count=None, producer=None):
     """Input dataset with an optional real rowCount (from Carte)."""
     ds = {'namespace': namespace, 'name': name}
     if row_count is not None:
         ds['inputFacets'] = {
             'dataQualityMetrics': {
-                '_producer': PRODUCER,
+                '_producer': producer or PRODUCER,
                 '_schemaURL': DQ_METRICS_URL,
                 'rowCount': int(row_count),
             },
@@ -519,10 +524,12 @@ def build_pdc_etl_events(doc, trans_details=None, namespace=None,
                 'facets': _pdi_job_facets(job_type),
             },
             'inputs': [_input_dataset(d['namespace'], d['name'],
-                                      d.get('rowCount'))
+                                      d.get('rowCount'),
+                                      producer=PDI_PLUGIN_PRODUCER)
                        for d in (inputs or [])],
             'outputs': [_output_dataset(d['namespace'], d['name'],
-                                        d.get('rowCount'))
+                                        d.get('rowCount'),
+                                        producer=PDI_PLUGIN_PRODUCER)
                         for d in (outputs or [])],
         }
         return [
