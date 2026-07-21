@@ -1,5 +1,38 @@
 # Changelog
 
+## PDI-AirFlow v1.24.0 - 2026-07-21
+
+Three defects that between them made PDC publishing look like it worked
+while producing nothing usable. All were masked by PDC returning **200**
+for events it could not build anything from.
+
+- **Standalone `.ktr` files ignored the publish target.** The `pdc`
+  branch existed only for `.kjb` jobs; the loop for unreferenced
+  transformations always emitted the *Marquez* model. Publishing a
+  transformation to PDC therefore sent the wrong event shape, got a 200,
+  and showed up nowhere. Standalone transformations now use
+  `build_pdc_trans_events` for `pdc`/`file` targets.
+- **Shared DB connections were unresolved.** A `.ktr` using a *shared*
+  connection names it but does not define it - the definition is in
+  `shared.xml` - so datasets emitted as `jdbc://unknown` and could not
+  attach to any catalogued asset. New `parse_shared_connections()` +
+  `default_shared_xml()` resolve them (`shared_xml` setting, defaulting
+  to `$KETTLE_HOME/.kettle`). Inline definitions still win, and
+  passwords are still never parsed. Same root cause as the Carte
+  `ConnectionMissing` bug in v1.21.1.
+- **`pvfs://` leaked the PDI alias into lineage.** After the v1.21.2
+  switch to connection-scoped URLs, the MinIO dataset namespaced itself
+  by the *connection* (`pvfs://cscu-minio`) instead of the bucket,
+  burying the bucket in the name - lineage that can never match the
+  catalogued object store. `_file_dataset` now unwraps `pvfs://<conn>/
+  <bucket>/<key>` to the physical `s3://<bucket>` + key. Caught by an
+  existing test that started failing; two regression tests added.
+
+Events now published for CSCU:
+`/CSCU/txn_report` <- `postgresql://192.168.1.200:5433`
+`cscu_core.cscu_core.transactions`, and `/CSCU/ingest_from_minio` <-
+`s3://cscu-documents` `feeds/`.
+
 ## PDI-AirFlow v1.23.0 - 2026-07-21
 
 **The long-standing PDC lineage 401 is solved - and it was never

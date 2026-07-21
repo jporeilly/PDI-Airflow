@@ -141,6 +141,20 @@ class TestFileDatasets:
         assert ins[0]['name'] == '/data/cscu/ach_payments_2026.csv'
         assert outs[0]['name'] == 'cscu_mart.staging.ach_stg'
 
+    def test_pvfs_unwraps_to_physical_bucket(self):
+        """pvfs://<connection>/<bucket>/<key> is PDI's connection-scoped
+        form. Lineage must describe the *storage*, not the PDI alias, or
+        it never matches the catalogued object store."""
+        from pdi2dag.lineage import _file_dataset
+        d = _file_dataset('pvfs://cscu-minio/cscu-documents/feeds/x.csv')
+        assert d['namespace'] == 's3://cscu-documents'
+        assert d['name'] == 'feeds/x.csv'
+
+    def test_plain_s3_still_works(self):
+        from pdi2dag.lineage import _file_dataset
+        d = _file_dataset('s3://cscu-documents/feeds/x.csv')
+        assert d['namespace'] == 's3://cscu-documents'
+
     def test_minio_object_store_input(self):
         # Reading from MinIO/S3 keeps the object-store scheme + bucket as
         # the dataset namespace (ties PDI lineage to the same bucket PDC

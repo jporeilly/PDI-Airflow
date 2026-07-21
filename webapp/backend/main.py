@@ -51,8 +51,11 @@ from pdi2dag.dpapi import unprotect as dpapi_unprotect
 from pdi2dag.generator import ConvertOptions, convert
 from pdi2dag.lineage import (build_job_model_events,
                              build_pdc_etl_events,
+                             build_pdc_trans_events,
                              build_trans_model_events, emit, emit_pdc)
-from pdi2dag.parser import parse_file, parse_trans_detail
+from pdi2dag.parser import (default_shared_xml, parse_file,
+                            parse_shared_connections,
+                            parse_trans_detail)
 
 ROOT = Path(__file__).resolve().parents[1]          # webapp/
 SETTINGS_FILE = ROOT / 'settings.json'
@@ -103,6 +106,9 @@ DEFAULT_SETTINGS = {
     'pdc_user': '',
     'pdc_password': '',
     'pdi_server': 'pdi2dag',
+    # Kettle shared.xml - resolves *shared* DB connections that .ktr
+    # files reference by name only. Blank = $KETTLE_HOME/.kettle or ~.
+    'shared_xml': r'C:\PDI-Airflow\.kettle\shared.xml',
 }
 
 TAGS = [
@@ -342,14 +348,25 @@ def _parse_content(filename, content, repo_path=''):
     return doc
 
 
-def _parse_trans_content(filename, content):
+def _parse_trans_content(filename, content, settings=None):
     fd, tmp = tempfile.mkstemp(suffix='.ktr')
     try:
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
             f.write(content)
-        return parse_trans_detail(tmp)
+        # A .ktr using a *shared* connection names it but does not define
+        # it - the definition lives in shared.xml. Without resolving it
+        # the lineage dataset comes out as jdbc://unknown and PDC has
+        # nothing real to attach to.
+        return parse_trans_detail(
+            tmp, shared_connections=_shared_connections(settings))
     finally:
         os.unlink(tmp)
+
+
+def _shared_connections(settings=None):
+    settings = settings if settings is not None else load_settings()
+    path = settings.get('shared_xml') or default_shared_xml()
+    return parse_shared_connections(path)
 
 
 def _hop_kind(hop):
@@ -432,14 +449,19 @@ def lineage_publish(body: LineagePublishRequest):
     settings = load_settings()
     ns = settings['marquez_namespace']
 
-    job_docs, trans_details = [], {}
+    job_docs, trans_details, trans_paths = [], {}, {}
     for f in body.files:
         try:
             if f.filename.lower().endswith('.kjb'):
                 job_docs.append(_parse_content(f.filename, f.content))
             else:
-                detail = _parse_trans_content(f.filename, f.content)
+                detail = _parse_trans_content(f.filename, f.content,
+                                              settings)
                 trans_details[detail.name] = detail
+                # Uploads carry no folder; the caller's repo_path is the
+                # only thing that knows /CSCU/<name> vs /<name>.
+                trans_paths[detail.name] = (
+                    getattr(f, 'repo_path', '') or '/' + detail.name)
         except ValueError as e:
             return _err('{}: {}'.format(f.filename, e))
 
@@ -464,7 +486,16 @@ def lineage_publish(body: LineagePublishRequest):
 
     for name, detail in trans_details.items():
         if name not in referenced:
-            events.extend(build_trans_model_events(detail, namespace=ns))
+            if body.target in ('pdc', 'file'):
+                # PDC builds its ETL Pipelines from the plugin-accurate
+                # shape (repo-path job names, table datasets). Emitting
+                # the Marquez model here instead is accepted with a 200
+                # and then silently shows up nowhere.
+                events.extend(build_pdc_trans_events(
+                    detail, trans_paths.get(name, '/' + name),
+                    server_name=settings.get('pdi_server', 'pdi2dag')))
+            else:
+                events.extend(build_trans_model_events(detail, namespace=ns))
             steps += len(detail.steps)
 
     if body.target == 'file':
@@ -528,7 +559,8 @@ def pdi_graph(body: GraphRequest):
             if f.filename.lower().endswith('.kjb'):
                 job_docs.append(_parse_content(f.filename, f.content))
             else:
-                detail = _parse_trans_content(f.filename, f.content)
+                detail = _parse_trans_content(f.filename, f.content,
+                                              settings)
                 trans_details[detail.name] = detail
         except ValueError as e:
             return _err('{}: {}'.format(f.filename, e))

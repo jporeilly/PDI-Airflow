@@ -319,12 +319,25 @@ def _tables_from_sql(sql):
     return out
 
 
-def _file_dataset(path):
+def _file_dataset(path, vfs_scheme='s3'):
     """OpenLineage dataset for a file/object step. Follows the file
     naming convention: object stores keep their scheme
     (``s3://bucket`` + key), local/VFS files use ``file`` namespace +
-    the path. PDI ``${var}`` tokens are left intact."""
+    the path. PDI ``${var}`` tokens are left intact.
+
+    ``pvfs://`` is unwrapped first. It is PDI's *connection-scoped* form
+    - ``pvfs://<connection-name>/<bucket>/<key>`` - so the leading
+    segment is a PDI alias, not a storage host. Emitted verbatim it
+    would namespace the dataset by the alias (``pvfs://cscu-minio``) and
+    bury the bucket in the name, so the lineage could never match the
+    catalogued object store. Rewrite to the physical ``s3://<bucket>``
+    form, which is what the catalog actually holds.
+    """
     p = (path or '').replace('\\', '/')
+    m = re.match(r'^pvfs://([^/]+)/(.*)$', p)
+    if m:
+        # Drop the connection alias; the next segment is the bucket.
+        p = '{}://{}'.format(vfs_scheme, m.group(2))
     m = re.match(r'^([a-zA-Z][a-zA-Z0-9+.-]*)://([^/]+)/?(.*)$', p)
     if m:
         scheme, host, rest = m.group(1), m.group(2), m.group(3)

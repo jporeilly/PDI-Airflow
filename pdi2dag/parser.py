@@ -259,7 +259,49 @@ def _step_files(step_node):
     return files
 
 
-def parse_trans_detail(path):
+def parse_shared_connections(path):
+    """Database connections from a Kettle ``shared.xml``.
+
+    Spoon stores *shared* connections outside the .ktr/.kjb, so a
+    transformation using one defines no ``<connection>`` of its own and
+    only names it on the step. Without resolving them, lineage datasets
+    come out as ``jdbc://unknown`` and cannot attach to a catalogued
+    asset.
+
+    Passwords are deliberately not read - only what identifies the
+    database (type, host, port, name) plus the username, matching
+    :class:`PdiConnection`.
+
+    Returns ``{name: PdiConnection}``; empty if the file is missing or
+    unreadable, since shared connections are optional.
+    """
+    try:
+        root = ET.parse(path).getroot()
+    except (ET.ParseError, OSError):
+        return {}
+    out = {}
+    for node in root.iter('connection'):
+        name = _text(node, 'name')
+        if not name:
+            continue
+        out[name] = PdiConnection(
+            name=name,
+            db_type=_text(node, 'type'),
+            server=_text(node, 'server'),
+            port=_text(node, 'port'),
+            database=_text(node, 'database'),
+            username=_text(node, 'username'))
+    return out
+
+
+def default_shared_xml():
+    """Where Kettle would look for shared.xml: $KETTLE_HOME/.kettle,
+    else the user home. Mirrors what Carte does at runtime."""
+    base = os.environ.get('KETTLE_HOME') or os.path.expanduser('~')
+    return os.path.join(base, '.kettle', 'shared.xml')
+
+
+def parse_trans_detail(path, shared_connections=None):
     """Parse a .ktr's step-level structure (steps + hops).
 
     Used for lineage emission - the DAG generator deliberately stays at
@@ -289,6 +331,14 @@ def parse_trans_detail(path):
                 port=_text(conn_node, 'port'),
                 database=_text(conn_node, 'database'),
                 username=_text(conn_node, 'username')))
+
+    # Fill in any connection the file only *names* (shared connections)
+    # from shared.xml. Inline definitions always win.
+    if shared_connections:
+        have = {c.name for c in detail.connections}
+        for name, conn in shared_connections.items():
+            if name not in have:
+                detail.connections.append(conn)
 
     for step_node in root.findall('step'):
         step_type = _text(step_node, 'type')
