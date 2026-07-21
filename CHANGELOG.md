@@ -1,5 +1,18 @@
 # Changelog
 
+## PDI-AirFlow v1.22.2 - 2026-07-21
+
+- **Fixed the stale-UI-after-rebuild trap.** `index.html` was served with
+  default caching, so after `npm run build` the browser kept loading the
+  previous fingerprinted bundle and the UI silently ran old code - it
+  cost two rounds of confusion during a walkthrough before being spotted.
+  The entry point is now `no-cache`; the hashed `assets/*` are marked
+  `immutable` with a one-year max-age, so this costs one small
+  conditional request per load rather than re-downloading the bundle.
+  (Windows note: the path arrives as `assets\index-<hash>.js`, so the
+  match normalises separators - the first attempt checked for `/assets/`
+  and silently never fired.)
+
 ## PDI-AirFlow v1.22.1 - 2026-07-21
 
 **Every long-running lab service now has `restart: always`.** Only the

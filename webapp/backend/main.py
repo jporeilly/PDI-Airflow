@@ -870,6 +870,30 @@ def get_job(job_id: str):
 
 # ------------------------------------------------------------- static UI
 
+class _NoCacheIndex(StaticFiles):
+    """Serve the built UI, but never let index.html be cached.
+
+    Vite fingerprints the bundles (index-<hash>.js), so those are safe to
+    cache hard - but index.html is what *points* at them. Cached, the
+    browser keeps loading yesterday's bundle after a rebuild and the UI
+    silently runs stale code. No-cache on the entry point only: the
+    hashed assets stay immutable, so this costs one small conditional
+    request per load, not the bundle.
+    """
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        # Normalise: on Windows this arrives as 'assets\\index-<hash>.js'.
+        rel = str(path).replace('\\', '/').lstrip('./')
+        if rel in ('', 'index.html') or rel.endswith('.html'):
+            response.headers['Cache-Control'] = \
+                'no-cache, no-store, must-revalidate'
+        elif rel.startswith('assets/'):
+            response.headers['Cache-Control'] = \
+                'public, max-age=31536000, immutable'
+        return response
+
+
 if DIST.exists():
-    app.mount('/', StaticFiles(directory=str(DIST), html=True),
+    app.mount('/', _NoCacheIndex(directory=str(DIST), html=True),
               name='frontend')
