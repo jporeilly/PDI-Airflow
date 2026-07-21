@@ -88,6 +88,14 @@ Generated reference DAGs live in [`workshop/dags/CSCU/`](../dags/CSCU/).
    with a **`cscu-core`** database connection to
    `192.168.1.200:5433 / cscu_core / pdc_user / catalog123!` defined as a
    **shared** connection in Spoon (so every transformation resolves it).
+
+   > Spoon saves shared connections to your **global**
+   > `%USERPROFILE%\.kettle\shared.xml`, but the launcher sets
+   > `KETTLE_HOME` to the install - so `run-carte.ps1` **syncs
+   > `shared.xml`** into `C:\PDI-Airflow\.kettle\` on startup. Without it
+   > the step fails `!BaseDatabaseStep.Init.ConnectionMissing!` even
+   > though the connection tests fine in Spoon. Define the connection in
+   > Spoon *first*, then start Carte.
 4. **Catalog the CSCU sources in PDC first** - connect -> ingest ->
    **profile**. This is what lets the PDI metadata *enrich* governed
    assets instead of creating stubs, and what gives the lineage meaning.

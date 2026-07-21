@@ -49,14 +49,45 @@ if (Test-Path $repoDef) {
 if (Test-Path $kettleDef) {
     $env:KETTLE_HOME = $root
     $repoNote = "$root\pipelines (KETTLE_HOME=$root)"
+
+    # Shared database connections live in .kettle\shared.xml. Spoon writes
+    # them to your GLOBAL ~/.kettle, but KETTLE_HOME points Carte at the
+    # install - so without this sync every shared connection fails with
+    # "!BaseDatabaseStep.Init.ConnectionMissing!". Copy the global file in
+    # so Carte resolves the same connections you defined in Spoon.
+    $globalShared = Join-Path $env:USERPROFILE '.kettle\shared.xml'
+    $installShared = Join-Path $root '.kettle\shared.xml'
+    if (Test-Path $globalShared) {
+        Copy-Item $globalShared $installShared -Force
+        $sharedNote = "synced from $globalShared"
+    } elseif (Test-Path $installShared) {
+        $sharedNote = 'using the install copy'
+    } else {
+        $sharedNote = 'NONE - shared DB connections will not resolve'
+    }
 } else {
     $repoNote = "global ~/.kettle repository 'Default'"
+    $sharedNote = 'global ~/.kettle\shared.xml'
 }
 
 Write-Host "Starting Carte on :8081" -ForegroundColor Cyan
 Write-Host "  PDI:        $PdiHome"
 Write-Host "  config:     $config"
 Write-Host "  repository: $repoNote"
+Write-Host "  shared.xml: $sharedNote"
 Write-Host "  auth:       cluster / cluster    (Ctrl+C to stop)"
 Write-Host ""
-& (Join-Path $PdiHome 'Carte.bat') $config
+# Run from the PDI folder: Carte.bat calls Spoon.bat relative to the
+# working directory, so invoking it by full path from elsewhere fails
+# with "'Spoon.bat' is not recognized". Note Push-Location alone is NOT
+# enough - it changes PowerShell's location but not the *process*
+# working directory that child processes inherit, so set that too.
+$prevCwd = [Environment]::CurrentDirectory
+Push-Location $PdiHome
+try {
+    [Environment]::CurrentDirectory = $PdiHome
+    & '.\Carte.bat' $config
+} finally {
+    Pop-Location
+    [Environment]::CurrentDirectory = $prevCwd
+}

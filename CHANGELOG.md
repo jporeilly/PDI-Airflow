@@ -1,5 +1,28 @@
 # Changelog
 
+## PDI-AirFlow v1.21.1 - 2026-07-21
+
+Two launcher fixes found while getting the first live CSCU run working.
+
+- **`run-carte.ps1` now syncs `shared.xml`.** Spoon writes *shared*
+  database connections to your **global** `%USERPROFILE%\.kettle\shared.xml`,
+  but the launcher sets `KETTLE_HOME` to the install - so Carte read
+  `C:\PDI-Airflow\.kettle\` and found no connections at all. Every step
+  using a shared connection failed `!BaseDatabaseStep.Init.ConnectionMissing!`
+  even though the same connection tested fine in Spoon. The launcher now
+  copies the global `shared.xml` in on startup (mirroring the existing
+  `repositories.xml` sync) and prints which source it used.
+  `run-carte-cluster.ps1` got the same fix - all nodes need it.
+- **Fixed `'Spoon.bat' is not recognized`.** `Carte.bat` invokes
+  `Spoon.bat` *relative to the working directory*, so calling it by full
+  path from elsewhere failed. The launcher now runs it from the PDI
+  folder - and sets `[Environment]::CurrentDirectory`, because
+  `Push-Location` changes only PowerShell's location, not the **process**
+  working directory that child processes inherit.
+- Documented both in LAB-SETUP troubleshooting, plus a capstone note to
+  define the `cscu-core` shared connection in Spoon **before** starting
+  Carte.
+
 ## PDI-AirFlow v1.21.0 - 2026-07-20
 
 - **Profiling added to the capstone sequence + an end-to-end flow

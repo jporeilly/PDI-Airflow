@@ -42,7 +42,18 @@ $cfgDir = Join-Path $root 'carte\cluster'
 if (-not (Test-Path $cfgDir)) { $cfgDir = Join-Path $root 'lab\carte\cluster' }
 if (-not (Test-Path $cfgDir)) { throw "carte\cluster configs not found under $root." }
 
-if (Test-Path (Join-Path $root '.kettle\repositories.xml')) { $env:KETTLE_HOME = $root }
+if (Test-Path (Join-Path $root '.kettle\repositories.xml')) {
+    $env:KETTLE_HOME = $root
+    # Same shared-connection sync as run-carte.ps1: Spoon writes shared DB
+    # connections to the GLOBAL ~/.kettle\shared.xml, but KETTLE_HOME points
+    # the cluster nodes at the install - without this every shared connection
+    # fails with "!BaseDatabaseStep.Init.ConnectionMissing!".
+    $globalShared = Join-Path $env:USERPROFILE '.kettle\shared.xml'
+    if (Test-Path $globalShared) {
+        Copy-Item $globalShared (Join-Path $root '.kettle\shared.xml') -Force
+        Write-Host "Synced shared.xml from $globalShared" -ForegroundColor DarkGray
+    }
+}
 
 # Master first, then the slaves (give the master a moment to accept
 # registrations). Each node runs in its own window.
