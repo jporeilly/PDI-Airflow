@@ -44,6 +44,23 @@ Generated reference DAGs live in [`workshop/dags/CSCU/`](../dags/CSCU/).
    with a **`cscu-core`** database connection to
    `192.168.1.200:5433 / cscu_core / pdc_user / catalog123!` defined as a
    **shared** connection in Spoon (so every transformation resolves it).
+4. **Register + scan the CSCU sources in PDC first** - this is what lets
+   the PDI metadata *enrich* governed assets instead of creating stubs.
+   The kit pre-fills both connections in
+   `PDC-Scenarios/data_sources/CSCU/cscu-datasources.csv` (load them with
+   the Glossary Generator's bulk loader, or add them by hand), then
+   ingest / Scan Files:
+
+   | Source | Details |
+   |---|---|
+   | `CopperState_Core_Banking` (postgres) | `192.168.1.200:5433`, db+schema `cscu_core`, `pdc_user` / `catalog123!` |
+   | `CopperState_Documents` (minio) | `http://192.168.1.200:9000`, bucket `cscu-documents`, `cscu_minio_user` / `minio_secret_123!` |
+
+   > Scan the **whole** bucket (`path: /`) - including `feeds/`. The PDI
+   > lineage is meant to land *on* those catalogued objects; excluding
+   > them would remove the assets the enrichment attaches to. If the
+   > sources aren't catalogued first, PDC auto-creates bare stub data
+   > sources from the incoming lineage events instead.
 
 The *migration + structural-lineage* part (Module 1) needs none of the DB
 or Carte - it works off the shipped blueprints.
@@ -205,9 +222,20 @@ to `cscu-documents/feeds/` (MinIO console `:9001`, or
    traces from the **MinIO object** into the mart - the object-store half
    of the catalog, produced by PDI rather than a document scan.
 
-**Structured vs unstructured:** PDC/Glossary scans `cscu-documents` for
-document structure and PII; this module shows PDI *consuming* an object
-from the same bucket and emitting S3 lineage. Two lenses on one store.
+**This is the enhanced-metadata story.** Leave the feed *in* the scanned
+bucket - the overlap is the whole point. The same object ends up carrying
+two layers:
+
+| Layer | Source | What it tells you |
+|---|---|---|
+| Catalogued asset | PDC scan of `cscu-documents` | *what the object is* - structure, classification, PII |
+| **Pipeline lineage** | **PDI (this module)** | *what consumes it and where the data goes* - `feeds/ach_payments_2026.csv` -> `staging.ach_stg`, with Carte row counts |
+
+PDC cannot derive that second layer by scanning; PDI supplies it. The
+same holds on the DB side: PDC catalogs the `cscu_core` tables, and PDI
+lineage adds the **flow between them**. That is what "enhanced PDI
+metadata" means here - the pipeline dimension layered onto governed
+assets, not a parallel catalog.
 
 ---
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## PDI-AirFlow v1.20.6 - 2026-07-20
+
+- **Capstone: the enhanced-PDI-metadata framing made explicit.** The CSCU
+  sources must be **registered and scanned in PDC first** (new
+  prerequisite, with the pre-filled
+  `PDC-Scenarios/data_sources/CSCU/cscu-datasources.csv` connections) -
+  that is what lets PDI lineage *enrich governed assets* rather than
+  making PDC auto-create bare stub data sources from incoming events.
+  Module 5 now states the point directly: scan the **whole** bucket
+  including `feeds/`, because the overlap is the demo - a catalogued
+  object gains a **pipeline layer** (what consumes it, where the data
+  goes, Carte row counts) that PDC cannot derive by scanning. Same on the
+  DB side: PDC catalogs `cscu_core` tables, PDI adds the flow between
+  them.
+
 ## PDI-AirFlow v1.20.5 - 2026-07-20
 
 - **MinIO feed sample + folder ingestion.** Added
