@@ -87,16 +87,6 @@ cd webapp\frontend; npm install; npm run build; cd ..\backend
 
 ## pdi2dag in 30 seconds
 
-```mermaid
-flowchart LR
-    A["nightly_etl.kjb"] --> P["parse<br/>entries · hops · params"]
-    P --> G["generate<br/>explode / wrap"]
-    G --> D["deploy to dags folder"]
-    D --> W["wait for scheduler parse"]
-    W --> U["unpause with schedule"]
-    U --> T["trigger (optional)"]
-```
-
 `pdi2dag` parses a PDI file and generates a DAG:
 
 - **Transformations (.ktr)** → a DAG with one `CarteTransOperator`.
@@ -116,6 +106,15 @@ flowchart LR
 Commands: `inspect`, `convert`, `migrate`, `deploy`, `lineage` — run
 `pdi2dag <cmd> --help`.
 
+<img width="1089" height="602" alt="image" src="https://github.com/user-attachments/assets/c0262e63-0f35-49dd-872c-0da4da92042c" />
+
+<img width="1088" height="922" alt="image" src="https://github.com/user-attachments/assets/43b96726-3e8a-42f0-8616-6ea5ab5d1d6c" />
+
+<img width="1080" height="762" alt="image" src="https://github.com/user-attachments/assets/a2071252-f898-471a-9ebb-5747afec244c" />
+
+<img width="1081" height="668" alt="image" src="https://github.com/user-attachments/assets/93226b7f-cf77-4582-adfa-2b8c0e936de0" />
+
+
 ## PDI structure in Marquez
 
 Airflow's OpenLineage provider only sees Airflow tasks; the inside of
@@ -123,6 +122,8 @@ a PDI job is a black box to it. `pdi2dag lineage` opens it up by
 publishing the PDI structure itself as OpenLineage jobs — entries
 connected by hop-derived datasets, and (with `--ktr-dir`) every
 transformation's step graph:
+
+<img width="1402" height="866" alt="image" src="https://github.com/user-attachments/assets/61b2b308-75c2-40cf-a269-e0370824e83c" />
 
 ```powershell
 pdi2dag lineage samples\nightly_etl.kjb `
