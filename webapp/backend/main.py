@@ -51,11 +51,12 @@ from pdi2dag.airflow_api import AirflowClient
 from pdi2dag.dpapi import protect as dpapi_protect
 from pdi2dag.dpapi import unprotect as dpapi_unprotect
 from pdi2dag.generator import ConvertOptions, convert
-from pdi2dag.lineage import (build_job_model_events,
+from pdi2dag.lineage import (_input_dataset, build_job_model_events,
                              build_pdc_etl_events,
                              build_pdc_trans_events,
                              build_trans_model_events, emit, emit_pdc,
-                             lineage_warnings)
+                             lineage_warnings, trans_datasets)
+from pdi2dag.reconcile import pdc_table_row_counts, reconcile_inputs
 from pdi2dag.parser import (default_shared_xml, parse_file,
                             parse_shared_connections,
                             parse_trans_detail)
@@ -392,6 +393,21 @@ def _carte_metrics(trans_names, settings):
     return out
 
 
+def _pdc_table_entities(settings):
+    """Every TABLE entity PDC knows, with its profiling stats."""
+    from pdi2dag.lineage import _pdc_token
+    base = (settings.get('pdc_url') or '').rstrip('/')
+    token = _pdc_token(base, settings.get('pdc_user'),
+                       settings.get('pdc_password'), verify_tls=False)
+    rs = requests.post(base + '/api/public/v2/entities/filter',
+                       json={'filters': {'types': ['TABLE']}},
+                       headers={'Authorization': 'Bearer ' + token,
+                                'Content-Type': 'application/json'},
+                       verify=False, timeout=30)
+    rs.raise_for_status()
+    return rs.json().get('data') or []
+
+
 def _shared_connections(settings=None):
     settings = settings if settings is not None else load_settings()
     path = settings.get('shared_xml') or default_shared_xml()
@@ -564,6 +580,52 @@ def lineage_publish(body: LineagePublishRequest):
             'namespace': ns, 'target': body.target,
             'metrics_from_carte': sorted(metrics),
             'warnings': warnings}
+
+
+@app.post('/api/reconcile', tags=['lineage'],
+          summary='Compare PDC profiled row counts with the Carte run')
+def reconcile(body: LineagePublishRequest):
+    """Two independent measurements of the same table - what PDC
+    profiled and what the pipeline actually read - lined up next to each
+    other. Neither vendor UI shows them together."""
+    if not body.files:
+        return _err('No files supplied')
+    settings = load_settings()
+    trans_details, trans_paths = {}, {}
+    for f in body.files:
+        if f.filename.lower().endswith('.kjb'):
+            continue
+        try:
+            detail = _parse_trans_content(f.filename, f.content, settings)
+        except ValueError as e:
+            return _err('{}: {}'.format(f.filename, e))
+        trans_details[detail.name] = detail
+        trans_paths[detail.name] = (getattr(f, 'repo_path', '')
+                                    or '/' + detail.name)
+    if not trans_details:
+        return _err('Reconciliation needs at least one transformation '
+                    '(.ktr)')
+
+    metrics = _carte_metrics(list(trans_details), settings)
+    try:
+        pdc_counts = pdc_table_row_counts(_pdc_table_entities(settings))
+    except (RuntimeError, requests.RequestException) as e:
+        return _err('Could not read PDC row counts: {}'.format(e),
+                    status=502)
+
+    out = []
+    for name, detail in trans_details.items():
+        inputs, _ = trans_datasets(detail, metrics.get(name))
+        rows = reconcile_inputs(
+            [_input_dataset(d['namespace'], d['name'], d.get('rowCount'))
+             for d in inputs], pdc_counts)
+        out.append({'transformation': name,
+                    'repo_path': trans_paths.get(name),
+                    'ran_on_carte': name in metrics,
+                    'datasets': rows})
+    return {'results': out,
+            'pdc_tables_profiled': sum(1 for v in pdc_counts.values()
+                                       if v is not None)}
 
 
 class GraphRequest(BaseModel):

@@ -6,6 +6,7 @@ import ConfigurePage from './pages/ConfigurePage.jsx'
 import PreviewPage from './pages/PreviewPage.jsx'
 import DeployPage from './pages/DeployPage.jsx'
 import LineagePage from './pages/LineagePage.jsx'
+import ReconcilePage from './pages/ReconcilePage.jsx'
 import PdiGraphPage from './pages/PdiGraphPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import { useStudio } from './state.js'
@@ -43,6 +44,7 @@ const PAGES = {
   deploy: DeployPage,
   pdigraph: PdiGraphPage,
   lineage: LineagePage,
+  reconcile: ReconcilePage,
   settings: SettingsPage,
 }
 
@@ -54,6 +56,7 @@ const CRUMBS = {
   deploy: ['Migrate', 'Deploy'],
   pdigraph: ['Observe', 'PDI Graph'],
   lineage: ['Observe', 'Lineage'],
+  reconcile: ['Observe', 'Reconcile'],
   settings: ['Configure', 'Settings'],
 }
 
@@ -170,6 +173,7 @@ export default function App() {
           <div className="nav-label">Observe</div>
           {navItem('pdigraph', 'PDI Graph')}
           {navItem('lineage', 'Lineage')}
+          {navItem('reconcile', 'Reconcile')}
           <div className="nav-label">Configure</div>
           {navItem('settings', 'Settings')}
         </nav>

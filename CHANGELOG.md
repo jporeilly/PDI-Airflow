@@ -1,5 +1,22 @@
 # Changelog
 
+## PDI-AirFlow v1.29.0 - 2026-07-21
+
+**New Reconcile view** (*Observe -> Reconcile*). PDC profiles a table and
+records its row count; Carte reports what the pipeline actually read.
+Neither vendor UI puts those two numbers together, so the Studio does
+the comparison explicitly.
+
+- New `pdi2dag/reconcile.py` + `POST /api/reconcile`, reading PDC's
+  profiled counts from `metadata.stats.rows` and the Carte counts from
+  the latest run.
+- Deliberately conservative: a table PDC has never profiled, or a
+  transformation Carte has never run, is reported **unknown** rather
+  than scored as a match. A missing measurement is not evidence of
+  agreement.
+- Verified in the UI: `cscu_core.cscu_core.transactions` **match, both
+  report 17 rows**; `feeds/` **unknown**, with the reason given.
+
 ## PDI-AirFlow v1.28.0 - 2026-07-21
 
 - **The Marquez step graph now carries Carte row counts too.** It was
