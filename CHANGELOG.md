@@ -1,5 +1,32 @@
 # Changelog
 
+## PDI-AirFlow v1.25.0 - 2026-07-21
+
+**Why CSCU lineage showed nothing in PDC, per the PDC documentation.**
+Two facts, neither of which the tooling made visible:
+
+1. **PDI lineage is not the ETL hierarchy.** It builds the **lineage
+   graph on the data assets**; the ETL hierarchy is a separate feature
+   and pipelines will never appear there. We had been looking in the
+   wrong view.
+2. **Only certain steps carry lineage** - Table input/output, Text file
+   input/output, S3 CSV input, S3 file output, Excel input/writer.
+   **Write to Log is not among them.** Both CSCU transformations end in
+   Write to Log, so each emits an input and **no output**: half an edge,
+   and nothing for the graph to draw. PDC still answers **200**, so the
+   publish looks entirely successful.
+
+- New `lineage_warnings()` + `PDC_LINEAGE_STEP_TYPES`; the publish
+  response now carries `warnings`, so the tool says a transformation
+  will render nothing *before* you go hunting in the UI. Publishing
+  CSCU now reports exactly why both pipelines are invisible.
+- LAB-SETUP troubleshooting row and a capstone note covering both
+  causes, including that a 200 from PDC proves nothing.
+
+To actually see CSCU in PDC's lineage graph, the transformations need a
+supported **output** step (Table output / Text file output / S3 file
+output) rather than Write to Log.
+
 ## PDI-AirFlow v1.24.0 - 2026-07-21
 
 Three defects that between them made PDC publishing look like it worked

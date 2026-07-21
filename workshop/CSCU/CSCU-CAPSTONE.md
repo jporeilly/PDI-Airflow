@@ -141,6 +141,20 @@ Generated reference DAGs live in [`workshop/dags/CSCU/`](../dags/CSCU/).
    > X" - column-level lineage is the paid PDI OpenLineage plugin's
    > territory.
 
+   > **Two things that decide whether lineage renders in PDC:**
+   >
+   > 1. **Where you look.** PDI lineage builds the **lineage graph** on
+   >    the data assets. It is **not** the *ETL hierarchy* - that is a
+   >    separate feature, and pipelines will never appear there.
+   > 2. **Only certain steps carry lineage.** PDC recognises **Table
+   >    input/output, Text file input/output, S3 CSV input, S3 file
+   >    output, Microsoft Excel input/writer**. Anything else - notably
+   >    **Write to Log** - produces *no dataset*. A transformation that
+   >    reads a table and logs it therefore emits an input with **no
+   >    output**: half an edge, so the graph has nothing to draw. Give
+   >    every pipeline you want to see in PDC a **supported output
+   >    step**.
+
 The *migration + structural-lineage* part (Module 1) needs none of the DB
 or Carte - it works off the shipped blueprints.
 

@@ -52,7 +52,8 @@ from pdi2dag.generator import ConvertOptions, convert
 from pdi2dag.lineage import (build_job_model_events,
                              build_pdc_etl_events,
                              build_pdc_trans_events,
-                             build_trans_model_events, emit, emit_pdc)
+                             build_trans_model_events, emit, emit_pdc,
+                             lineage_warnings)
 from pdi2dag.parser import (default_shared_xml, parse_file,
                             parse_shared_connections,
                             parse_trans_detail)
@@ -516,8 +517,14 @@ def lineage_publish(body: LineagePublishRequest):
             emit(events, settings['marquez_url'])
     except (RuntimeError, requests.RequestException) as e:
         return _err(str(e), status=502)
+    # PDC answers 200 for events it can build nothing from, so a clean
+    # response is not evidence the graph will render. Say so up front.
+    warnings = []
+    for detail in trans_details.values():
+        warnings.extend(lineage_warnings(detail))
     return {'events': len(events), 'jobs': jobs, 'steps': steps,
-            'namespace': ns, 'target': body.target}
+            'namespace': ns, 'target': body.target,
+            'warnings': warnings}
 
 
 class GraphRequest(BaseModel):

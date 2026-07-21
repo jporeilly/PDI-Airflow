@@ -361,6 +361,49 @@ def _fq_dataset_name(conn, schema, table):
     return table
 
 
+# Steps PDC recognises for lineage (per the PDI OpenLineage plugin
+# documentation). Anything else - Write to Log, Dummy, Select Values,
+# calculators - carries no dataset, so it contributes nothing to the
+# graph.
+PDC_LINEAGE_STEP_TYPES = {
+    'TableInput', 'TableOutput',
+    'TextFileInput', 'TextFileOutput',
+    'CsvInput', 'S3CSVINPUT', 'S3FileOutputPlugin',
+    'ExcelInput', 'ExcelOutput', 'ExcelWriter',
+    'TypeExitExcelWriterStep',
+}
+
+
+def lineage_warnings(detail):
+    """Why a transformation may show nothing in PDC's lineage graph.
+
+    PDC draws an edge between datasets. A transformation whose only
+    downstream step is unsupported (classically **Write to Log**) emits
+    an input and no output - half an edge, nothing to draw - yet PDC
+    still answers 200, so the publish looks successful. Surface that
+    before the user goes hunting in the UI.
+    """
+    inputs, outputs = trans_datasets(detail)
+    warnings = []
+    if not inputs and not outputs:
+        warnings.append(
+            "'{}' has no lineage-carrying steps, so PDC will show "
+            'nothing. Supported: Table input/output, Text file '
+            'input/output, S3 CSV input, S3 file output, Excel '
+            'input/writer.'.format(detail.name))
+    elif not outputs:
+        unsupported = sorted({
+            s.step_type for s in detail.steps
+            if s.step_type not in PDC_LINEAGE_STEP_TYPES})
+        warnings.append(
+            "'{}' reads data but writes no dataset, so PDC has only "
+            'half an edge and draws nothing. Add a supported output '
+            'step (Table output, Text file output, S3 file output). '
+            'Unsupported steps here: {}.'.format(
+                detail.name, ', '.join(unsupported) or 'none'))
+    return warnings
+
+
 def trans_datasets(detail, step_metrics=None):
     """Resolve a transformation's input/output DB datasets from its
     Table Input / Table Output steps, matching the PDI OpenLineage
