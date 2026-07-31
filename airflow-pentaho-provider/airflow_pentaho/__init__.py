@@ -15,7 +15,7 @@
 # limitations under the License.
 """Pentaho Data Integration provider for Apache Airflow."""
 
-__version__ = '2.0.0'
+__version__ = '2.1.0'
 
 
 def get_provider_info():

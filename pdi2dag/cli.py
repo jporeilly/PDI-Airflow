@@ -85,6 +85,27 @@ def _add_convert_args(parser):
                              '/CSCU/txn_report. Default: inferred from where '
                              "the file sits in the repository (the .ktr's "
                              '<directory> is often stale)')
+    parser.add_argument('--run-config', choices=['carte', 'local'],
+                        default='carte',
+                        help='How the PDI work executes: carte (default) '
+                             'submits to the Carte server/cluster master '
+                             'behind --conn-id; local runs Kitchen/Pan on '
+                             'the Airflow worker')
+    parser.add_argument('--ktr-dir', default=None,
+                        help="Directory with the job's .ktr files - "
+                             'enriches the baked lineage spec with each '
+                             "transformation's datasets and column facets")
+    parser.add_argument('--no-lineage', action='store_true',
+                        help='Skip the publish_pdi_lineage task (runs then '
+                             'expose only Airflow-level lineage)')
+    parser.add_argument('--marquez-url', dest='dag_marquez_url',
+                        default=None,
+                        help='Marquez URL baked into the DAG as the '
+                             'publish default (the pdi2dag_marquez_url '
+                             'Airflow Variable overrides it at run time)')
+    parser.add_argument('--server-name', default='pdi2dag',
+                        help='OpenLineage namespace / PDC "PDI Server" '
+                             'node the published lineage lands under')
 
 
 def _options_from_args(args):
@@ -99,7 +120,11 @@ def _options_from_args(args):
         retries=args.retries,
         owner=args.owner,
         start_date=args.start_date,
-        level=args.level)
+        level=args.level,
+        run_config=args.run_config,
+        lineage=not args.no_lineage,
+        marquez_url=args.dag_marquez_url,
+        server_name=args.server_name)
 
 
 def _write_dag(result, out):
@@ -160,9 +185,33 @@ def _apply_repo_path(doc, args):
     return doc
 
 
+def _resolve_trans_details(doc, ktr_dir, source_file):
+    """Parsed .ktr details for the doc's transformations, for the baked
+    lineage spec. Looks in --ktr-dir, else beside the source file. A
+    standalone .ktr resolves to itself. Missing files just mean the
+    spec carries structure without that transformation's datasets."""
+    details = {}
+    base = ktr_dir or os.path.dirname(os.path.abspath(source_file))
+    if doc.kind == 'job':
+        for entry in doc.executable_entries:
+            if entry.entry_type != 'TRANS' or not entry.path:
+                continue
+            trans_name = entry.path.split('/')[-1]
+            ktr = os.path.join(base, trans_name + '.ktr')
+            if os.path.exists(ktr):
+                details[trans_name] = parse_trans_detail(ktr)
+    else:
+        try:
+            details[doc.name] = parse_trans_detail(source_file)
+        except ValueError:
+            pass
+    return details
+
+
 def cmd_convert(args):
     doc = _apply_repo_path(parse_file(args.file), args)
-    result = convert(doc, _options_from_args(args))
+    details = _resolve_trans_details(doc, args.ktr_dir, args.file)
+    result = convert(doc, _options_from_args(args), trans_details=details)
     out_file = _write_dag(result, args.output)
     print('Generated {} (dag_id: {})'.format(out_file, result.dag_id))
     _print_warnings(result)
@@ -171,7 +220,8 @@ def cmd_convert(args):
 
 def cmd_migrate(args):
     doc = _apply_repo_path(parse_file(args.file), args)
-    result = convert(doc, _options_from_args(args))
+    details = _resolve_trans_details(doc, args.ktr_dir, args.file)
+    result = convert(doc, _options_from_args(args), trans_details=details)
 
     dag_file = _write_dag(result, args.dags_folder)
     print('Deployed {} (dag_id: {})'.format(dag_file, result.dag_id))

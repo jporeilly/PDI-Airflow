@@ -1,5 +1,51 @@
 # Changelog
 
+## PDI-AirFlow v1.32.0 - 2026-07-31 (provider 2.1.0)
+
+The objective, end to end: convert Pentaho pipelines to DAGs that
+successfully schedule, exposing the lineage - with different run and
+cluster configurations using local or remote Carte servers. Verified
+live today: nightly_job.kjb migrated, scheduled (0 6 * * *), run green
+against a remote Windows Carte from the Dockerised Airflow 3.3, and the
+run itself published 4 OpenLineage events to Marquez.
+
+- **Every generated DAG now publishes its own lineage, per run.**
+  pdi2dag bakes a lineage spec into the DAG (datasets, schema and
+  column facets, Carte metric hints); a terminal `publish_pdi_lineage`
+  task - provider 2.1.0's `airflow_pentaho.lineage` - stamps fresh run
+  ids, pulls the run's per-step row counts from the Carte server that
+  executed it, and posts to Marquez (`pdi2dag_marquez_url` Variable or
+  the baked default) and/or PDC (an Airflow connection, default
+  `pdc_lineage`). No backend configured = quiet success; the task is a
+  TEARDOWN, so it never masks a real PDI failure (found live: the first
+  cut turned a failed run green).
+- **Offline column-level lineage** (`pdi2dag/columns.py`) - the paid
+  plugin's headline feature, derived from the .ktr alone: the Table
+  Input SELECT list is parsed (aliases, joins, expressions; bare
+  columns bind only when unambiguous; `SELECT *` stays honestly
+  unknown), the hop graph is walked with per-step field semantics
+  (Select Values rename/prune, Calculator/Formula derivations,
+  Stream/DB lookups, Constant, passthrough for everything else - which
+  is PDI's own semantics), and the result lands as OpenLineage
+  `columnLineage` + `schema` dataset facets on every emitter path.
+  Verified: Marquez's column-lineage API returns the member_360 graph
+  with per-column nodes (22 nodes; a joined aggregate traces to the
+  joined table's column).
+- **Run configurations**: `--run-config carte` (default; a cluster
+  master is just a connection - `--conn-id pdi_cluster`) or
+  `--run-config local` (Kitchen/Pan on the worker, deferrable ignored
+  with a warning). `--ktr-dir`, `--no-lineage`, `--marquez-url`,
+  `--server-name` on convert/migrate.
+- Live-run fixes found by actually scheduling: Git-Bash MSYS path
+  conversion mangled `--repo-path /home/bi/...` into
+  `C:/Program Files/Git/...` (regenerate with `MSYS_NO_PATHCONV=1`);
+  the Windows Carte lab repo needed the `/helloworld` and `/home/bi`
+  folders seeded; deleting the transient scheduled task that launches
+  Carte kills the process tree (leave `PDI-Carte-Lab` in place).
+- 30 new tests (columns/facets 17, generator run-config + lineage 7,
+  provider runtime 6). App suite 96 passed; provider suite green.
+
+
 ## PDI-AirFlow v1.31.1 - 2026-07-21
 
 - **Documented that PDC lineage is append-only.** Deleting events does

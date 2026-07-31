@@ -102,6 +102,9 @@ class PdiStep:
     table: str = ''              # Table Output target table
     # Populated for file-based steps (CSV, text, Excel, JSON...)
     files: List[str] = field(default_factory=list)
+    # Column-level structure for the step types the column-lineage
+    # walk models (pdi2dag/columns.py documents each shape).
+    column_info: dict = field(default_factory=dict)
 
     @property
     def is_file_input(self):
@@ -259,6 +262,81 @@ def _step_files(step_node):
     return files
 
 
+def _column_info(step_node, step_type):
+    """Column-level structure for the steps the lineage walk models.
+
+    Only what column flow needs is read - a select/rename list, a
+    calculation's operands, a lookup's returned values, an output's
+    stream-to-column mapping. Shapes are documented per step type in
+    ``pdi2dag/columns.py``.
+    """
+    if step_type == 'SelectValues':
+        fields_node = step_node.find('fields')
+        if fields_node is None:
+            return {}
+        selects = [( _text(f, 'name'), _text(f, 'rename'))
+                   for f in fields_node.findall('field')
+                   if _text(f, 'name')]
+        removes = [_text(r, 'name')
+                   for r in fields_node.findall('remove')
+                   if _text(r, 'name')]
+        metas = [( _text(m, 'name'), _text(m, 'rename'))
+                 for m in fields_node.findall('meta')
+                 if _text(m, 'name') and _text(m, 'rename')]
+        return {'selects': selects, 'removes': removes,
+                'meta_renames': metas}
+    if step_type == 'Calculator':
+        calcs = []
+        for c in step_node.findall('calculation'):
+            name = _text(c, 'field_name')
+            if not name:
+                continue
+            operands = [v for v in (_text(c, 'field_a'),
+                                    _text(c, 'field_b'),
+                                    _text(c, 'field_c')) if v]
+            calcs.append((name, operands))
+        return {'calcs': calcs} if calcs else {}
+    if step_type == 'Formula':
+        formulas = [(_text(f, 'field_name'), _text(f, 'formula_string'))
+                    for f in step_node.findall('formula')
+                    if _text(f, 'field_name')]
+        return {'formulas': formulas} if formulas else {}
+    if step_type in ('Constant', 'RowGenerator'):
+        fields_node = step_node.find('fields')
+        adds = [_text(f, 'name') for f in fields_node.findall('field')
+                if _text(f, 'name')] if fields_node is not None else []
+        return {'adds': adds} if adds else {}
+    if step_type == 'StreamLookup':
+        lookup = step_node.find('lookup')
+        if lookup is None:
+            return {}
+        values = [(_text(v, 'name'), _text(v, 'rename'))
+                  for v in lookup.findall('value') if _text(v, 'name')]
+        return {'from_step': _text(lookup, 'from'), 'values': values}
+    if step_type == 'DBLookup':
+        lookup = step_node.find('lookup')
+        if lookup is None:
+            return {}
+        values = [(_text(v, 'name'), _text(v, 'rename'))
+                  for v in lookup.findall('value') if _text(v, 'name')]
+        return {'connection': _text(step_node, 'connection'),
+                'schema': _text(lookup, 'schema'),
+                'table': _text(lookup, 'table'),
+                'values': values}
+    if step_type == 'TableOutput':
+        fields_node = step_node.find('fields')
+        mappings = [(_text(f, 'column_name'), _text(f, 'stream_name'))
+                    for f in fields_node.findall('field')
+                    if _text(f, 'column_name')]             if fields_node is not None else []
+        return {'mappings': mappings} if mappings else {}
+    if step_type in FILE_INPUT_TYPES | FILE_OUTPUT_TYPES:
+        fields_node = step_node.find('fields')
+        names = [_text(f, 'name') for f in fields_node.findall('field')
+                 if _text(f, 'name')] if fields_node is not None else []
+        return {'fields': names} if names else {}
+    return {}
+
+
 def parse_shared_connections(path):
     """Database connections from a Kettle ``shared.xml``.
 
@@ -355,6 +433,7 @@ def parse_trans_detail(path, shared_connections=None):
             step.table = _text(step_node, 'table')
         elif step.is_file_input or step.is_file_output:
             step.files = _step_files(step_node)
+        step.column_info = _column_info(step_node, step_type)
         detail.steps.append(step)
 
     order = root.find('order')

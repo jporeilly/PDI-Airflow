@@ -122,10 +122,20 @@ class TestGeneratedDagImports:
         assert dag.dag_id == 'nightly_etl'
         task_ids = {t.task_id for t in dag.tasks}
         assert task_ids == {'Extract_Sales', 'Extract_Customers',
-                            'Load_Warehouse', 'Publish_Reports'}
+                            'Load_Warehouse', 'Publish_Reports',
+                            'publish_pdi_lineage'}
         load = dag.get_task('Load_Warehouse')
         upstream = set(load.upstream_task_ids)
         assert upstream == {'Extract_Sales', 'Extract_Customers'}
+        # the lineage task trails EVERY migrated task, success or not
+        publish = dag.get_task('publish_pdi_lineage')
+        assert set(publish.upstream_task_ids) == {
+            'Extract_Sales', 'Extract_Customers', 'Load_Warehouse',
+            'Publish_Reports'}
+        # a TEARDOWN: runs whatever happened, and its state never masks
+        # a real PDI failure (Airflow rewrites the trigger rule)
+        assert publish.is_teardown
+        assert str(publish.trigger_rule) == 'all_done_setup_success'
 
 
 class TestFileDatasets:
@@ -173,3 +183,45 @@ class TestFileDatasets:
         assert _file_dataset('s3://bucket/path/x.csv') == {
             'namespace': 's3://bucket', 'name': 'path/x.csv'}
         assert _file_dataset(r'C:\data\x.xlsx')['namespace'] == 'file'
+
+
+class TestRunConfigurations:
+    """One migration, several execution shapes: Carte (remote server or
+    cluster master - a connection id either way) or local Kitchen/Pan
+    on the worker."""
+
+    def test_local_run_config_emits_kitchen_and_pan(self, job_doc):
+        result = convert(job_doc, ConvertOptions(run_config='local'))
+        assert 'Extract_Sales = PanOperator(' in result.code
+        assert "trans='extract_sales'" in result.code
+        assert "directory='/demo'" in result.code
+        assert 'Publish_Reports = KitchenOperator(' in result.code
+        assert 'from airflow_pentaho.operators.kettle import' in result.code
+        assert 'CarteTransOperator' not in result.code
+
+    def test_local_ignores_deferrable_with_a_warning(self, job_doc):
+        result = convert(job_doc, ConvertOptions(run_config='local',
+                                                 deferrable=True))
+        assert 'deferrable=True' not in result.code
+        assert any('deferrable applies to Carte' in w
+                   for w in result.warnings)
+
+    def test_cluster_is_just_a_connection(self, job_doc):
+        result = convert(job_doc, ConvertOptions(conn_id='pdi_cluster'))
+        assert "pdi_conn_id='pdi_cluster'" in result.code
+
+
+class TestLineageTask:
+    def test_lineage_task_bakes_the_spec_and_backends(self, job_doc):
+        result = convert(job_doc, ConvertOptions(
+            marquez_url='http://marquez-api:5000'))
+        assert 'PDI_LINEAGE = ' in result.code
+        assert "'server_name': 'pdi2dag'" in result.code
+        assert "'marquez_url': 'http://marquez-api:5000'" in result.code
+        assert "'pdc_conn_id': 'pdc_lineage'" in result.code
+        assert "trigger_rule='all_done'" in result.code
+
+    def test_lineage_off_leaves_the_dag_clean(self, job_doc):
+        result = convert(job_doc, ConvertOptions(lineage=False))
+        assert 'publish_pdi_lineage' not in result.code
+        assert 'PDI_LINEAGE' not in result.code

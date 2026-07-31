@@ -51,13 +51,18 @@ OUTPUT_STATS_URL = ('https://openlineage.io/spec/facets/1-0-2/'
                     'OutputStatisticsOutputDatasetFacet.json')
 DQ_METRICS_URL = ('https://openlineage.io/spec/facets/1-0-1/'
                   'DataQualityMetricsInputDatasetFacet.json')
+COLUMN_LINEAGE_URL = ('https://openlineage.io/spec/facets/1-2-0/'
+                      'ColumnLineageDatasetFacet.json')
+SCHEMA_FACET_URL = ('https://openlineage.io/spec/facets/1-1-1/'
+                    'SchemaDatasetFacet.json')
 
 
 def _dataset(namespace, name):
     return {'namespace': namespace, 'name': name}
 
 
-def _output_dataset(namespace, name, row_count=None, producer=None):
+def _output_dataset(namespace, name, row_count=None, producer=None,
+                    facets=None):
     """Output dataset with an optional real rowCount (from Carte).
 
     ``producer`` should match the enclosing event's producer - a facet
@@ -65,6 +70,8 @@ def _output_dataset(namespace, name, row_count=None, producer=None):
     inconsistent, and a consumer is entitled to ignore it.
     """
     ds = {'namespace': namespace, 'name': name}
+    if facets:
+        ds['facets'] = facets
     if row_count is not None:
         ds['outputFacets'] = {
             'outputStatistics': {
@@ -76,9 +83,12 @@ def _output_dataset(namespace, name, row_count=None, producer=None):
     return ds
 
 
-def _input_dataset(namespace, name, row_count=None, producer=None):
+def _input_dataset(namespace, name, row_count=None, producer=None,
+                   facets=None):
     """Input dataset with an optional real rowCount (from Carte)."""
     ds = {'namespace': namespace, 'name': name}
+    if facets:
+        ds['facets'] = facets
     if row_count is not None:
         ds['inputFacets'] = {
             'dataQualityMetrics': {
@@ -520,6 +530,229 @@ def trans_datasets(detail, step_metrics=None):
     return inputs, outputs
 
 
+def _resolve_ref(ref, conns):
+    """A columns.py source ref -> (namespace, dataset name, field),
+    using the same naming the datasets themselves get - so a facet's
+    inputFields point at datasets that actually exist in the event."""
+    if ref[0] == 'db':
+        _kind, conn_name, table_token, col = ref
+        conn = conns.get(conn_name)
+        ns = _conn_namespace(conn) if conn else 'jdbc://unknown'
+        schema, table = (table_token.split('.', 1) if '.' in table_token
+                         else ('', table_token))
+        return ns, _fq_dataset_name(conn, schema, table), col
+    _kind, path, col = ref
+    ds = _file_dataset(path)
+    return ds['namespace'], ds['name'], col
+
+
+def dataset_column_facets(detail, producer=None):
+    """Offline column-level lineage as OpenLineage dataset facets.
+
+    Returns ``(column_facets, schema_fields)``:
+
+    * ``column_facets``: {(namespace, name): columnLineage facet} for
+      output datasets where at least one column's origin is known.
+    * ``schema_fields``: {(namespace, name): [column, ...]} for every
+      dataset whose columns the .ktr reveals - an output's written
+      columns, an input table's referenced columns, a file input's
+      declared fields.
+
+    This is the free-plugin parity feature: the paid PDI OpenLineage
+    plugin derives the same facet at runtime with a SQL parser; this
+    derives it offline from the .ktr (see ``pdi2dag/columns.py`` for
+    what is modelled and where lineage is honestly omitted).
+    """
+    from pdi2dag.columns import output_column_lineage, select_columns
+
+    producer = producer or PRODUCER
+    conns = {c.name: c for c in detail.connections}
+    per_step = output_column_lineage(detail)
+    column_facets = {}
+    schema_fields = {}
+
+    def _remember(key, column):
+        cols = schema_fields.setdefault(key, [])
+        if column not in cols:
+            cols.append(column)
+
+    # inputs: the columns each source table/file provably supplies
+    for step in detail.steps:
+        if step.step_type == 'TableInput' and step.sql:
+            cols = select_columns(step.sql)
+            for _out, refs in cols or []:
+                for table_token, col in refs:
+                    ns, name, field = _resolve_ref(
+                        ('db', step.connection, table_token, col), conns)
+                    _remember((ns, name), field)
+        elif step.is_file_input and step.files:
+            for f in (step.column_info or {}).get('fields') or []:
+                for path in step.files:
+                    ds = _file_dataset(path)
+                    _remember((ds['namespace'], ds['name']), f)
+
+    # outputs: written columns + their lineage
+    fields_by_key = {}
+    for step in detail.steps:
+        columns = per_step.get(step.name)
+        if not columns:
+            continue
+        targets = []
+        if step.step_type == 'TableOutput' and step.table:
+            conn = conns.get(step.connection)
+            ns = _conn_namespace(conn) if conn else 'jdbc://unknown'
+            targets.append((ns, _fq_dataset_name(conn, step.schema,
+                                                 step.table)))
+        elif step.is_file_output:
+            for f in step.files:
+                ds = _file_dataset(f)
+                targets.append((ds['namespace'], ds['name']))
+        for key in targets:
+            fields = fields_by_key.setdefault(key, {})
+            for column, refs in columns.items():
+                _remember(key, column)
+                resolved = sorted(_resolve_ref(r, conns) for r in refs)
+                inputs = [{'namespace': ns, 'name': name, 'field': col}
+                          for ns, name, col in resolved]
+                entry = fields.setdefault(column, {'inputFields': []})
+                known = {(i['namespace'], i['name'], i['field'])
+                         for i in entry['inputFields']}
+                entry['inputFields'].extend(
+                    i for i in inputs
+                    if (i['namespace'], i['name'], i['field']) not in known)
+
+    for key, fields in fields_by_key.items():
+        traced = {c: e for c, e in fields.items() if e['inputFields']}
+        if traced:
+            column_facets[key] = {
+                '_producer': producer,
+                '_schemaURL': COLUMN_LINEAGE_URL,
+                'fields': traced,
+            }
+    return column_facets, schema_fields
+
+
+def _dataset_facets(key, column_facets, schema_fields, producer,
+                    is_output):
+    """The ``facets`` dict for one dataset, or None."""
+    facets = {}
+    cols = schema_fields.get(key)
+    if cols:
+        facets['schema'] = {
+            '_producer': producer,
+            '_schemaURL': SCHEMA_FACET_URL,
+            'fields': [{'name': c} for c in cols],
+        }
+    if is_output and key in column_facets:
+        facets['columnLineage'] = column_facets[key]
+    return facets or None
+
+
+def _spec_datasets(detail):
+    """Input/output dataset specs for a DAG's baked lineage: the same
+    identities :func:`trans_datasets` resolves, plus the baked
+    schema/columnLineage facets and the ``_step``/``_counters`` hints
+    the provider's runtime publisher uses to attach that run's real
+    Carte row counts (Table Input reads 'input'/'read'; Table Output
+    writes 'written'/'output'; file steps per their Carte counters)."""
+    conns = {c.name: c for c in detail.connections}
+    col_facets, schema_fields = dataset_column_facets(
+        detail, producer=PDI_PLUGIN_PRODUCER)
+    default_ns = 'jdbc://unknown'
+    inputs, outputs = [], []
+
+    def _spec(key, step_name, counters, is_output):
+        ds = {'namespace': key[0], 'name': key[1]}
+        facets = _dataset_facets(key, col_facets, schema_fields,
+                                 PDI_PLUGIN_PRODUCER, is_output)
+        if facets:
+            ds['facets'] = facets
+        ds['_step'] = step_name
+        ds['_counters'] = counters
+        return ds
+
+    for step in detail.steps:
+        if step.step_type == 'TableInput' and step.sql:
+            conn = conns.get(step.connection)
+            ns = _conn_namespace(conn) if conn else default_ns
+            for tok in _tables_from_sql(step.sql):
+                schema, table = (tok.split('.', 1) if '.' in tok
+                                 else ('', tok))
+                key = (ns, _fq_dataset_name(conn, schema, table))
+                inputs.append(_spec(key, step.name, ['input', 'read'],
+                                    False))
+        elif step.step_type == 'TableOutput' and step.table:
+            conn = conns.get(step.connection)
+            ns = _conn_namespace(conn) if conn else default_ns
+            key = (ns, _fq_dataset_name(conn, step.schema, step.table))
+            outputs.append(_spec(key, step.name, ['written', 'output'],
+                                 True))
+        elif step.is_file_input and step.files:
+            for f in step.files:
+                ds = _file_dataset(f)
+                inputs.append(_spec((ds['namespace'], ds['name']),
+                                    step.name, ['output', 'read'], False))
+        elif step.is_file_output and step.files:
+            for f in step.files:
+                ds = _file_dataset(f)
+                outputs.append(_spec((ds['namespace'], ds['name']),
+                                     step.name, ['written', 'input'],
+                                     True))
+    return inputs, outputs
+
+
+def build_dag_lineage_spec(doc=None, detail=None, trans_details=None,
+                           server_name='pdi2dag'):
+    """The lineage spec pdi2dag bakes into a generated DAG.
+
+    The generated DAG's terminal task hands this to the provider's
+    ``publish_pdi_lineage``, which stamps run ids/times, merges the
+    run's Carte metrics and posts to Marquez/PDC - so a SCHEDULED run
+    keeps the catalog current without a manual publish step.
+
+    Give either ``doc`` (a .kjb, with ``trans_details`` mapping
+    transformation names to parsed .ktr details) or ``detail`` (a
+    standalone .ktr).
+    """
+    trans_details = trans_details or {}
+    spec = {'server_name': server_name}
+    if doc is not None and doc.kind == 'job':
+        spec['job_name'] = doc.repo_path
+        spec['job_type'] = 'job'
+        entries = []
+        for entry in doc.executable_entries:
+            name = entry.path or '{}/{}'.format(
+                doc.repo_path.rsplit('/', 1)[0], _sanitize_id(entry.name))
+            e = {'name': name,
+                 'job_type': ('transformation'
+                              if entry.entry_type == TYPE_TRANS
+                              else 'job'),
+                 'trans': ''}
+            if entry.entry_type == TYPE_TRANS:
+                tname = (entry.path or '').split('/')[-1]
+                d = trans_details.get(tname)
+                if d is not None:
+                    e['trans'] = d.name or tname
+                    e['inputs'], e['outputs'] = _spec_datasets(d)
+            entries.append(e)
+        spec['entries'] = entries
+    elif detail is not None:
+        inputs, outputs = _spec_datasets(detail)
+        spec['job_name'] = None
+        spec['job_type'] = 'transformation'
+        spec['entries'] = [{
+            'name': '/{}'.format(detail.name),
+            'job_type': 'transformation',
+            'trans': detail.name,
+            'inputs': inputs,
+            'outputs': outputs,
+        }]
+    else:
+        spec['job_name'] = None
+        spec['entries'] = []
+    return spec
+
+
 def build_pdc_etl_events(doc, trans_details=None, namespace=None,
                          server_name='pdi2dag', step_metrics=None):
     """Events matching the official PDI OpenLineage plugin, so PDC's
@@ -562,7 +795,15 @@ def build_pdc_etl_events(doc, trans_details=None, namespace=None,
     }
 
     def run_events(name, run_id, run_facets, job_type, event_time,
-                   inputs=None, outputs=None, failed=False):
+                   inputs=None, outputs=None, failed=False,
+                   facet_maps=None):
+        col_facets, schema_fields = facet_maps or ({}, {})
+
+        def ds_facets(d, is_output):
+            return _dataset_facets((d['namespace'], d['name']),
+                                   col_facets, schema_fields,
+                                   PDI_PLUGIN_PRODUCER, is_output)
+
         base = {
             'producer': PDI_PLUGIN_PRODUCER,
             'schemaURL': SCHEMA_URL,
@@ -574,11 +815,13 @@ def build_pdc_etl_events(doc, trans_details=None, namespace=None,
             },
             'inputs': [_input_dataset(d['namespace'], d['name'],
                                       d.get('rowCount'),
-                                      producer=PDI_PLUGIN_PRODUCER)
+                                      producer=PDI_PLUGIN_PRODUCER,
+                                      facets=ds_facets(d, False))
                        for d in (inputs or [])],
             'outputs': [_output_dataset(d['namespace'], d['name'],
                                         d.get('rowCount'),
-                                        producer=PDI_PLUGIN_PRODUCER)
+                                        producer=PDI_PLUGIN_PRODUCER,
+                                        facets=ds_facets(d, True))
                         for d in (outputs or [])],
         }
         return [
@@ -599,17 +842,21 @@ def build_pdc_etl_events(doc, trans_details=None, namespace=None,
         job_type = 'job' if entry.entry_type == 'JOB' else 'transformation'
         inputs = outputs = None
         failed = False
+        facet_maps = None
         if entry.entry_type == TYPE_TRANS:
             tname = (entry.path or '').split('/')[-1]
             detail = trans_details.get(tname)
             if detail:
                 metrics = step_metrics.get(tname)
                 inputs, outputs = trans_datasets(detail, metrics)
+                facet_maps = dataset_column_facets(
+                    detail, producer=PDI_PLUGIN_PRODUCER)
                 failed = bool(metrics) and any(
                     m.get('errors') for m in metrics.values())
         events += run_events(
             name, str(uuid.uuid4()), dict(parent_run_facet), job_type,
-            now + timedelta(seconds=3 + i), inputs, outputs, failed)
+            now + timedelta(seconds=3 + i), inputs, outputs, failed,
+            facet_maps=facet_maps)
     return events
 
 
@@ -622,6 +869,8 @@ def build_pdc_trans_events(detail, repo_path, namespace=None,
     ns = namespace or server_name
     now = datetime.now(timezone.utc)
     inputs, outputs = trans_datasets(detail, step_metrics)
+    col_facets, schema_fields = dataset_column_facets(
+        detail, producer=PDI_PLUGIN_PRODUCER)
     failed = bool(step_metrics) and any(
         m.get('errors') for m in (step_metrics or {}).values())
     job = {
@@ -629,6 +878,12 @@ def build_pdc_trans_events(detail, repo_path, namespace=None,
         'name': repo_path,
         'facets': _pdi_job_facets('transformation'),
     }
+
+    def ds_facets(d, is_output):
+        return _dataset_facets((d['namespace'], d['name']),
+                               col_facets, schema_fields,
+                               PDI_PLUGIN_PRODUCER, is_output)
+
     run_id = str(uuid.uuid4())
     base = {
         'producer': PDI_PLUGIN_PRODUCER,
@@ -637,11 +892,13 @@ def build_pdc_trans_events(detail, repo_path, namespace=None,
         'job': job,
         'inputs': [_input_dataset(d['namespace'], d['name'],
                                   d.get('rowCount'),
-                                  producer=PDI_PLUGIN_PRODUCER)
+                                  producer=PDI_PLUGIN_PRODUCER,
+                                  facets=ds_facets(d, False))
                    for d in inputs],
         'outputs': [_output_dataset(d['namespace'], d['name'],
                                     d.get('rowCount'),
-                                    producer=PDI_PLUGIN_PRODUCER)
+                                    producer=PDI_PLUGIN_PRODUCER,
+                                    facets=ds_facets(d, True))
                     for d in outputs],
     }
     return [

@@ -48,6 +48,18 @@ class ConvertOptions:
     retries: int = 0
     start_date: Optional[str] = None    # YYYY-MM-DD, default: today
     level: str = 'Basic'
+    # HOW the PDI work executes. 'carte' submits to the Carte server the
+    # connection points at (a cluster master is just a connection - e.g.
+    # `--conn-id pdi_cluster`); 'local' runs Kitchen/Pan on the Airflow
+    # worker itself.
+    run_config: str = 'carte'           # carte | local
+    # Every generated DAG ends in a publish_pdi_lineage task by default,
+    # so each SCHEDULED run refreshes Marquez/PDC with that run's
+    # lineage and row counts.
+    lineage: bool = True
+    marquez_url: Optional[str] = None   # baked default; Variable overrides
+    pdc_conn_id: str = 'pdc_lineage'
+    server_name: str = 'pdi2dag'        # OL namespace / PDC server node
 
 
 @dataclass
@@ -187,15 +199,45 @@ def _operator_kwargs_lines(indent, options):
         '{}params=PDI_PARAMS,'.format(indent),
         '{}level={},'.format(indent, repr(options.level)),
     ]
-    if options.deferrable:
+    if options.deferrable and options.run_config == 'carte':
         lines.append('{}deferrable=True,'.format(indent))
         lines.append('{}poll_interval={},'.format(
             indent, options.poll_interval))
     return lines
 
 
-def convert(doc: PdiDocument, options: ConvertOptions) -> ConvertResult:
-    """Generate Airflow DAG source for a parsed PDI document."""
+def _operator_for(kind, options):
+    """(operator class name, target kwarg) for one executable, per the
+    run configuration: Carte submits the repository path to the server
+    behind the connection; local runs Kitchen/Pan on the worker with
+    the same repository coordinates."""
+    if options.run_config == 'local':
+        return (('PanOperator', 'trans') if kind == TYPE_TRANS
+                else ('KitchenOperator', 'job'))
+    return (('CarteTransOperator', 'trans') if kind == TYPE_TRANS
+            else ('CarteJobOperator', 'job'))
+
+
+def _target_lines(indent, arg, repo_path, options):
+    """The lines binding a task to its PDI executable. Carte takes the
+    full repository path; Kitchen/Pan take name + directory."""
+    if options.run_config == 'local':
+        directory, _, name = (repo_path or '/').rpartition('/')
+        return [
+            '{}{}={},'.format(indent, arg, repr(name)),
+            '{}directory={},'.format(indent, repr(directory or '/')),
+        ]
+    return ['{}{}={},'.format(indent, arg, repr(repo_path))]
+
+
+def convert(doc: PdiDocument, options: ConvertOptions,
+            trans_details=None) -> ConvertResult:
+    """Generate Airflow DAG source for a parsed PDI document.
+
+    ``trans_details`` (transformation name -> PdiTransDetail) enriches
+    the baked lineage spec with each transformation's datasets and
+    column facets; without it the spec still carries the job structure.
+    """
     mode = options.mode
     if doc.kind != 'job':
         mode = 'wrap'
@@ -216,14 +258,20 @@ def convert(doc: PdiDocument, options: ConvertOptions) -> ConvertResult:
     body = []
     needs_empty = False
 
+    if options.deferrable and options.run_config == 'local':
+        warnings.append(
+            'deferrable applies to Carte runs only; local Kitchen/Pan '
+            'tasks occupy a worker slot for their duration.')
+
+    all_task_ids = []
     if mode == 'wrap':
-        op = 'CarteJobOperator' if doc.kind == 'job' \
-            else 'CarteTransOperator'
-        arg = 'job' if doc.kind == 'job' else 'trans'
+        kind = TYPE_JOB if doc.kind == 'job' else TYPE_TRANS
+        op, arg = _operator_for(kind, options)
         task_id = _sanitize_id('run_{}'.format(doc.name))
+        all_task_ids.append(task_id)
         body.append('    {} = {}('.format(task_id, op))
         body.append('        task_id={},'.format(repr(task_id)))
-        body.append('        {}={},'.format(arg, repr(doc.repo_path)))
+        body.extend(_target_lines('        ', arg, doc.repo_path, options))
         body.extend(_operator_kwargs_lines('        ', options))
         body.append('    )')
     else:
@@ -248,10 +296,8 @@ def convert(doc: PdiDocument, options: ConvertOptions) -> ConvertResult:
 
         for entry in doc.executable_entries:
             task_id = task_ids[entry.name]
-            op = ('CarteTransOperator'
-                  if entry.entry_type == TYPE_TRANS
-                  else 'CarteJobOperator')
-            arg = 'trans' if entry.entry_type == TYPE_TRANS else 'job'
+            all_task_ids.append(task_id)
+            op, arg = _operator_for(entry.entry_type, options)
             if not entry.path:
                 warnings.append(
                     "Entry '{}' has no resolvable repository path; "
@@ -260,8 +306,9 @@ def convert(doc: PdiDocument, options: ConvertOptions) -> ConvertResult:
                 needs_empty = True
             body.append('    {} = {}('.format(task_id, op))
             body.append('        task_id={},'.format(repr(task_id)))
-            body.append('        {}={},'.format(
-                arg, repr(entry.path or 'FIXME/' + entry.name)))
+            body.extend(_target_lines(
+                '        ', arg, entry.path or 'FIXME/' + entry.name,
+                options))
             body.extend(_operator_kwargs_lines('        ', options))
             if entry.name in hop_kinds:
                 body.append('        trigger_rule={},'.format(
@@ -278,6 +325,55 @@ def convert(doc: PdiDocument, options: ConvertOptions) -> ConvertResult:
             body.append('    # Dependencies from PDI hops')
             body.extend(sorted(dep_lines))
 
+    lineage_lines = []
+    spec_lines = []
+    if options.lineage and all_task_ids:
+        from pdi2dag.lineage import build_dag_lineage_spec
+        if doc.kind == 'job':
+            spec = build_dag_lineage_spec(
+                doc=doc, trans_details=trans_details,
+                server_name=options.server_name)
+        else:
+            detail = (trans_details or {}).get(doc.name)
+            if detail is not None:
+                spec = build_dag_lineage_spec(
+                    detail=detail, server_name=options.server_name)
+            else:
+                spec = {'server_name': options.server_name,
+                        'job_name': None, 'job_type': 'transformation',
+                        'entries': [{'name': doc.repo_path,
+                                     'job_type': 'transformation',
+                                     'trans': doc.name}]}
+        import pprint
+        spec_lines = ['', '# Lineage spec baked at migration time; the',
+                      '# publish task stamps run ids and merges the',
+                      "# run's Carte metrics at execution time.",
+                      'PDI_LINEAGE = {}'.format(
+                          pprint.pformat(spec, width=72, sort_dicts=False)),
+                      '']
+        lineage_lines = [
+            '',
+            '    publish_lineage = PythonOperator(',
+            "        task_id='publish_pdi_lineage',",
+            '        python_callable=publish_pdi_lineage,',
+            '        op_kwargs={',
+            "            'spec': PDI_LINEAGE,",
+            "            'pdi_conn_id': {},".format(repr(options.conn_id)),
+            "            'marquez_url': {},".format(
+                repr(options.marquez_url)),
+            "            'pdc_conn_id': {},".format(
+                repr(options.pdc_conn_id)),
+            '        },',
+            "        trigger_rule='all_done',",
+            '    )',
+            '    # every run publishes its own lineage, success or not.',
+            '    # As a TEARDOWN the task never masks a real failure -',
+            '    # the run state follows the PDI tasks, not the publisher.',
+            '    publish_lineage.as_teardown()',
+        ]
+        for task_id in all_task_ids:
+            lineage_lines.append('    {} >> publish_lineage'.format(task_id))
+
     header = _header(doc, options, warnings)
 
     imports = [
@@ -291,6 +387,22 @@ def convert(doc: PdiDocument, options: ConvertOptions) -> ConvertResult:
     for op in sorted(ops_used):
         imports.append(
             'from airflow_pentaho.operators.carte import {}'.format(op))
+    kettle_ops = {line.strip().split(' = ')[1].split('(')[0]
+                  for line in body
+                  if ' = PanOperator' in line
+                  or ' = KitchenOperator' in line}
+    for op in sorted(kettle_ops):
+        imports.append(
+            'from airflow_pentaho.operators.kettle import {}'.format(op))
+    if lineage_lines:
+        imports.append('from airflow_pentaho.lineage import '
+                       'publish_pdi_lineage')
+        imports.append('try:')
+        imports.append('    from airflow.providers.standard.operators.'
+                       'python import PythonOperator')
+        imports.append('except ImportError:  # Airflow 2.x')
+        imports.append('    from airflow.operators.python import '
+                       'PythonOperator')
     if needs_empty:
         imports.append('from airflow.operators.empty import EmptyOperator')
     imports.append('')
@@ -302,6 +414,6 @@ def convert(doc: PdiDocument, options: ConvertOptions) -> ConvertResult:
     param_lines.append('')
 
     code = '\n'.join(
-        header + imports + param_lines
-        + _dag_block(dag_id, doc, options) + body) + '\n'
+        header + imports + param_lines + spec_lines
+        + _dag_block(dag_id, doc, options) + body + lineage_lines) + '\n'
     return ConvertResult(dag_id=dag_id, code=code, warnings=warnings)
